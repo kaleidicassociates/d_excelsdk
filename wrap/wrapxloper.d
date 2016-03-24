@@ -468,7 +468,7 @@ string makeMultiArgWrap(string wrapperName, int numArgs)
 	return ret;
 }
 
-mixin!makeMultiArgWrap("multiArgWrap30",30);
+mixin (makeMultiArgWrap("multiArgWrap30",30));
 multiArgWrap30(&simpleMulti);
 
 LPXLOPER12 simpleMulti(LPXLOPER12[] args)
