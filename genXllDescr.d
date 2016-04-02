@@ -1,4 +1,24 @@
-ï»¿module genXllDescr;
+¿module genXllDescr;
+
+struct XllProcedure {
+	wstring xllText;
+	alias xllText this;
+}
+
+struct Xll {
+	XllProcedure xllProcedure;
+	XllType xllType;
+	XllFunction xllFunction;
+	XllArgument xllArgument;
+	XllMacroType xllMacroType;
+	XllCategory xllCategory;
+	XllShortcut xllShortcut;
+	XllFuncHelp xllFuncHelp;
+	XllArgHelp xllArgHelp;
+}
+
+
+
 import xlltypes;
 template descr(alias exportedFunction) {
 	enum descr = mixin(descr_!exportedFunction);
