@@ -23,18 +23,19 @@ import std.stdio;
 //pragma(msg, printWrapped!traitstest);
 //PropertyMember!("traitstest", "test"));
 
-enum string[2] names=["",""];
+string[] names;
 //void function(string s) addNamedg=&addName;
-auto addNamedg=&addName;
+
+/*auto addNamedg=&addName;
 
 void addName(string s)
 {
 	names~=s;
-}
+}*/
 
 void main(string[] argsz)
 {
-	addNamedg=&addName;
+//	addNamedg=&addName;
 	pragma(msg,printWrapped!traitstest);
 	writefln("%s",names);
 	//writefln("%s",args.xllcategory);

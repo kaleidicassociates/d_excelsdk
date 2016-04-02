@@ -43,6 +43,7 @@ void FetchExcel12EntryPt() // __forceinline
 		{
 			pexcel12 = cast(EXCEL12PROC) GetProcAddress(hmodule, EXCEL12ENTRYPT);
 		}
+		assert(pexecel !is null, "No entry point fetched");
 	}
 }
 

@@ -15,8 +15,8 @@
   
   	Ported to the D Programming Language by Laeeth Isharc (2015)
 */
-//import std.c.windows.windows;
 import core.sys.windows.windows;
+
 /**
    XL 12 Basic Datatypes 
  */
@@ -26,11 +26,11 @@ extern(C)int Excel4(int xlfn, LPXLOPER operRes, int count,... );  //_cdecl
 	
 extern(Windows)
 {
-//	alias BYTE=ubyte;
-//	alias WORD=short; 				// guess
-//	alias DWORD=long;				// guess
-//	alias DWORD_PTR=DWORD*;			// guess
-//	alias BOOL=int;
+	alias BYTE=ubyte;
+	alias WORD=ushort; 				
+	alias DWORD=uint;				// guess
+	alias DWORD_PTR=DWORD*;			// guess
+	alias BOOL=int;
 	alias XCHAR=wchar;
 	alias RW=int;					// XL 12 Row 
 	alias COL=int;					// XL 12 Column
@@ -38,7 +38,6 @@ extern(Windows)
 
 	/**
 	   XLREF structure 
-	  
 	   Describes a single rectangular reference.
 	*/
 
@@ -55,7 +54,6 @@ extern(Windows)
 
 	/**
 	   XLMREF structure
-	  
 	   Describes multiple rectangular references.
 	   This is a variable size structure, default 
 	   size is 1 reference.
@@ -137,14 +135,20 @@ extern(Windows)
 	   REGISTER function.
 	 */
 
+	version (UNICODE) {
+		static assert(false, "Unicode not supported right now");
+	} else {
+		alias LPSTR = char**;
+	}
+
 	struct XLOPER
 	{
 		union VAL 
 		{
-			double num;					/* xltypeNum */
+			double num;					
 			LPSTR str;					/* xltypeStr */
 			WORD bool_;					/* xltypeBool */
-			WORD err;					/* xltypeErr */
+			WORD err;					
 			short w;					/* xltypeInt */
 			struct SREF
 			{

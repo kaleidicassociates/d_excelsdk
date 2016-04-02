@@ -12,3 +12,17 @@ struct Boolean {
 
 	alias this asBool;
 }
+
+struct CountedString4 {
+	private ubyte* _data;
+
+	@property string _string() {
+		return cast(string) _data[1 .. length + 1];
+	} 
+
+	@property ubyte length() {
+		return _data[0];
+	}
+	
+	alias _string this;
+}
