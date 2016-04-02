@@ -1,59 +1,107 @@
 module genXllDescr;
 
-struct XllProcedure {
-	wstring xllText;
+auto xllProcedure(string _xllText)() {
+	return XllProcedure!_xllText.init;	
+}
+
+struct XllProcedure(wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 0;
 }
 
-struct XllType {
-	wstring xllText;
+auto xllType(string _xllText)() {
+	return XllType!_xllText.init;
+}
+
+struct XllType(wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 1;
 }
-struct XllFunction {
-	wstring xllText;
+
+auto xllFunction(string _xllText)() {
+	return XllFunction!_xllText.init;
+}
+
+struct XllFunction(wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 2;
 }
-struct XllArgument {
-	wstring xllText;
+
+auto xllArgument(string _xllText)() {
+	return XllArgument!_xllText.init;
+}
+
+struct XllArgument (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 3;
 }
-struct XllMacroType {
-	wstring xllText;
+
+auto xllMacroType(string _xllText)() {
+	return XllMacroType!_xllText.init;
+}
+
+struct XllMacroType (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 4;
 }
-struct XllCategory {
-	wstring xllText;
+
+auto xllCategory(string _xllText)() {
+	return XllCategory!_xllText.init;
+}
+
+struct XllCategory (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 5;
 }
-struct XllShortcut {
-	wstring xllText;
+
+auto xllShortcut(string _xllText)() {
+	return XllShortcut!_xllText.init;
+}
+
+struct XllShortcut (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 6;
 }
-struct XllHelpTopic {
-	wstring xllText;
+
+auto xllHelpTopic(string _xllText)() {
+	return XllHelpTopic!_xllText.init;
+}
+
+struct XllHelpTopic (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 7;
 }
-struct XllFunctionHelp {
-	wstring xllText;
+
+auto xllFunctionHelp(wstring _xllText)() {
+	return XllFunctionHelp!_xllText.init;
+}
+
+struct XllFunctionHelp (wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 8;
 }
 
-struct XllArgumentHelp {
-	wstring xllText;
+auto xllArgumentHelp(string _xllText)() {
+	return XllArgumentHelp!_xllText.init;
+}
+
+struct XllArgumentHelp(wstring _xllText) {
+	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 9;
 }
 
 struct Xll {
+/*
 	XllProcedure xllProcedure;
 	XllType xllType;
 	XllFunction xllFunction;
@@ -63,15 +111,15 @@ struct Xll {
 	XllShortcut xllShortcut;
 	XllFunctionHelp xllFunctionHelp;
 	XllArgumentHelp xllArgumentHelp;
+*/
+	wstring[10] args;
 
-	this (T...) (T args) if (allStatisfy!(t => (is(t.xllText == wstring) && is(t.xllArgPosition : uint)))) {
+	this (T...) (T _args) /*if (args.allStatisfy!(t => (is(t.xllText : string) && is(t.xllArgPosition : uint)))) */ {
 		import std.algorithm : startsWith, filter; 
-		foreach(arg;args) {
-			foreach(member;__traits(derivedMembers, this).filter!(a => a.startWith("Xll"))) {
-				static if (is(typeof(member) == typeof(arg))) {
-					assert(__traits(getMember, this, member) == member.init);
-					__traits(getMember, this, member) = arg;
-				}
+		foreach(arg;_args) {
+			static if (is(typeof(arg.xllArgPosition))) {
+				pragma(msg, "Assigning arg (", arg.xllArgPosition, ") : ", arg.xllText);
+				args[arg.xllArgPosition] = arg; 
 			}
 		}
 	}
@@ -106,25 +154,30 @@ wchar typeText(T)(T t) {
 	}
 }
 
-wstring[10] descr_(alias exportedFunction)() {
-	import std.traits : hasUDA;
-	import std.algorithm : filter;
+wstring[10] descr_(alias Func)() {
+	import std.traits : hasUDA, getUDAs;
+	import std.algorithm : filter, startsWith;
 	static assert(hasUDA!(exportedFunction, Xll));
 	wstring[10] result;
 
 	debug { uint argCtr; }
-	auto xll = getUDA!(exportedFunction, Xll);
-	
-	foreach(member;__traits(derivedMembers, xll).filter!(is(member.xllArgPosition))) {
-		debug { assert(member.xllArgPosition == argCtr++); }
-		result[member.xllArgPosition] = member;
+	auto xll = getUDAs!(Func, Xll)[0];
+	pragma(msg, getUDAs!(Func, Xll)[0]);
+	foreach(_member;__traits(derivedMembers, typeof(xll))) {
+		static if (_member.startsWith("Xll")) {
+			pragma(msg, _member);
+			auto member = __traits(getMember, xll, _member);
+			pragma(msg, typeof(member));
+			debug { assert(typeof(member).xllArgPosition == argCtr++); }
+			result[typeof(member).xllArgPosition] = member;
+		}
 	}
 
-	return result;
+	return xll.args;
 
 
 	/* Output looks like :
-	[ "Func1"w,                                     // Procedure1
+	[ "Func1"w,                                     // Procedure
 		"UU"w,                                  // type_text
 		"Func1"w,                               // function_text
 		"Arg"w,                                 // argument_text
@@ -138,3 +191,12 @@ wstring[10] descr_(alias exportedFunction)() {
 */
 	 
 }
+
+
+//// unittest
+
+extern (C) @Xll(xllProcedure!("AddOne"), xllCategory!("SimpleMath"), xllType!("BB"), xllFunctionHelp!("Adds one to the argument")) 
+	double exportedFunction(double ctr) { return ctr++; }
+
+static assert(descr_!(exportedFunction) == ["AddOne"w, "BB"w, ""w, ""w, ""w, "SimpleMath"w, ""w, ""w, "Adds one to the argument"w, ""w ]);
+pragma(msg, descr_!(exportedFunction));
