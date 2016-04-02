@@ -1,4 +1,4 @@
-﻿module xlltypes;
+module xlltypes;
 
 struct Boolean {
 	short _value;

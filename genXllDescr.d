@@ -1,8 +1,56 @@
-¿module genXllDescr;
+module genXllDescr;
 
 struct XllProcedure {
 	wstring xllText;
 	alias xllText this;
+	enum xllArgPosition = 0;
+}
+
+struct XllType {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 1;
+}
+struct XllFunction {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 2;
+}
+struct XllArgument {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 3;
+}
+struct XllMacroType {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 4;
+}
+struct XllCategory {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 5;
+}
+struct XllShortcut {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 6;
+}
+struct XllHelpTopic {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 7;
+}
+struct XllFunctionHelp {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 8;
+}
+
+struct XllArgumentHelp {
+	wstring xllText;
+	alias xllText this;
+	enum xllArgPosition = 9;
 }
 
 struct Xll {
@@ -13,18 +61,18 @@ struct Xll {
 	XllMacroType xllMacroType;
 	XllCategory xllCategory;
 	XllShortcut xllShortcut;
-	XllFuncHelp xllFuncHelp;
-	XllArgHelp xllArgHelp;
+	XllFunctionHelp xllFunctionHelp;
+	XllArgumentHelp xllArgumentHelp;
 
 	this (T...) (T args) if (allStatisfy!(t => (is(t.xllText == wstring) && is(t.xllArgPosition : uint)))) {
 		import std.algorithm : startsWith, filter; 
-		foreach(arg;args.sort!((a,b) => a.xllArgPosition < b.xllArgPosition)) {
+		foreach(arg;args) {
 			foreach(member;__traits(derivedMembers, this).filter!(a => a.startWith("Xll"))) {
 				static if (is(typeof(member) == typeof(arg))) {
-					assert(__traits(getMember, this, member) == member.init)
+					assert(__traits(getMember, this, member) == member.init);
 					__traits(getMember, this, member) = arg;
 				}
-			}	
+			}
 		}
 	}
 }
@@ -58,15 +106,25 @@ wchar typeText(T)(T t) {
 	}
 }
 
-string descr_(alias exportedFunction)() {
-	import std.traits;
+wstring[10] descr_(alias exportedFunction)() {
+	import std.traits : hasUDA;
+	import std.algorithm : filter;
 	static assert(hasUDA!(exportedFunction, Xll));
+	wstring[10] result;
+
+	debug { uint argCtr; }
+	auto xll = getUDA!(exportedFunction, Xll);
+	
+	foreach(member;__traits(derivedMembers, xll).filter!(is(member.xllArgPosition))) {
+		debug { assert(member.xllArgPosition == argCtr++); }
+		result[member.xllArgPosition] = member;
+	}
+
+	return result;
 
 
-
-	string result = "[";
 	/* Output looks like :
-	[ "Func1"w,                                     // Procedure
+	[ "Func1"w,                                     // Procedure1
 		"UU"w,                                  // type_text
 		"Func1"w,                               // function_text
 		"Arg"w,                                 // argument_text
