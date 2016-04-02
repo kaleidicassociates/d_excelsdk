@@ -15,6 +15,18 @@ struct Xll {
 	XllShortcut xllShortcut;
 	XllFuncHelp xllFuncHelp;
 	XllArgHelp xllArgHelp;
+
+	this (T...) (T args) if (allStatisfy!(t => (is(t.xllText == wstring) && is(t.xllArgPosition : uint)))) {
+		import std.algorithm : startsWith, filter; 
+		foreach(arg;args.sort!((a,b) => a.xllArgPosition < b.xllArgPosition)) {
+			foreach(member;__traits(derivedMembers, this).filter!(a => a.startWith("Xll"))) {
+				static if (is(typeof(member) == typeof(arg))) {
+					assert(__traits(getMember, this, member) == member.init)
+					__traits(getMember, this, member) = arg;
+				}
+			}	
+		}
+	}
 }
 
 
