@@ -1,3 +1,6 @@
+module memorymanager;
+__gshared void* vpmm;
+
 /**
 	MemoryManager.D
 
@@ -27,10 +30,19 @@
 //
 // Total number of memory allocation pools to manage
 //
+
 import core.sys.windows.windows;
-//import std.c.windows.windows;
-import xlcall;
-import xlcallcpp;
+version (Windows) {
+	@nogc nothrow extern(Windows) uint GetCurrentThreadId();
+} else {
+//	import core.sys.posix.posix;
+	uint GetCurrentThreadId() {
+		import core.thread;
+		return cast(uint)Thread.getThis().id;
+	}
+}
+//import xlcall;
+//import xlcallcpp;
 import memorypool;
 
 enum MEMORYPOOLS=4;
@@ -40,7 +52,7 @@ struct MemoryManager
 	private int m_impCur=0;		// Current number of pools
 	private int m_impMax=MEMORYPOOLS;		// Max number of mem pools
 	static private MemoryPool[] m_rgmp;	// Storage for the memory pools
-
+//extern(C++) :
 
 	//
 	// Returns the singleton class, or creates one if it doesn't exit
@@ -52,7 +64,7 @@ struct MemoryManager
 			vpmm = new MemoryManager();
 			this.m_rgmp.length=MEMORYPOOLS;
 		}
-		return vpmm;
+		return cast(MemoryManager*)vpmm;
 	}
 
 	
@@ -81,7 +93,7 @@ struct MemoryManager
 	ubyte* CPP_GetTempMemory(size_t cByte)
 	//LPSTR CPP_GetTempMemory(size_t cByte)
 	{
-		DWORD dwThreadID;
+		uint dwThreadID;
 		MemoryPool* pmp;
 
 		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
@@ -101,7 +113,7 @@ struct MemoryManager
 	//
 	void CPP_FreeAllTempMemory()
 	{
-		DWORD dwThreadID;
+		uint dwThreadID;
 		MemoryPool* pmp;
 
 		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
@@ -120,7 +132,7 @@ struct MemoryManager
 	// the pool that matches the given thread ID. If a pool is not found,
 	// it creates a new one
 	//
-	private MemoryPool* GetMemoryPool(DWORD dwThreadID)
+	private MemoryPool* GetMemoryPool(uint dwThreadID)
 	{
 		int imp; //loop var
 		
@@ -139,7 +151,7 @@ struct MemoryManager
 	// Will assign an unused pool to a thread; should all pools be assigned,
 	// it will grow the number of pools available.
 	//
-	private MemoryPool* CreateNewPool(DWORD dwThreadID)
+	private MemoryPool* CreateNewPool(uint dwThreadID)
 	{
 		if (m_impCur >= m_impMax)
 		{
@@ -190,8 +202,7 @@ struct MemoryManager
 //
 // Singleton instance of the class
 //
-__gshared MemoryManager* vpmm;
-
+extern (C++) :
 //
 // Interface for C callers to ask for memory
 //
@@ -211,4 +222,8 @@ ubyte* MGetTempMemory(size_t cByte)
 void MFreeAllTempMemory()
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+}
+
+void* GetTempMemory(size_t size) {
+	return MGetTempMemory(size);
 }

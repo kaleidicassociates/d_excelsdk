@@ -1,4 +1,5 @@
 module genXllDescr;
+import xlltypes;
 
 auto xllProcedure(string _xllText)() {
 	return XllProcedure!_xllText.init;	
@@ -90,14 +91,14 @@ struct XllFunctionHelp (wstring _xllText) {
 	enum xllArgPosition = 8;
 }
 
-auto xllArgumentHelp(string _xllText)() {
-	return XllArgumentHelp!_xllText.init;
+auto xllArgumentHelp(string _xllText, uint argN = 0)() {
+	return XllArgumentHelp!(_xllText.init, argN);
 }
 
-struct XllArgumentHelp(wstring _xllText) {
+struct XllArgumentHelp(wstring _xllText, uint argN) {
 	enum xllText = _xllText;
 	alias xllText this;
-	enum xllArgPosition = 9;
+	enum xllArgPosition = 9 + argN;
 }
 
 struct Xll {
@@ -127,30 +128,37 @@ struct Xll {
 
 
 
-import xlltypes;
 template descr(alias exportedFunction) {
 	enum descr = mixin(descr_!exportedFunction);
 	static assert(is(typeof(descr) == wstring[]));
 }
 
-wchar typeText(T)(T t) {
+char typeText(T)(T t) {
 	// are C and F the same ?
 	// F is modified in place
 	// C is not
-	static if (is(T == LxOper)) {
-
+	static if (is(T == XlOper4)) {
+		return "R";
 	} else static if (is(T == double)) {
-		return "B"w;
+		return "B";
 	} else static if (is(T == double*)) {
-		return "E"w;
+		return "E";
+	} else static if (is(T == short)) {
+		return "I";
+	} else static if (is(T == short*)) {
+		return "M";
+	} else static if (is(T == int)) {
+		return "J";
+	} else static if (is(T == int*)) {
+		return "N";
 	} else static if (is(T == Boolean)) {
-		return "A"w;
+		return "A";
 	} else static if (is(T == Boolean*)) {
-		return "L"w;
+		return "L";
 	} else static if (is(T == const char*)) {
-		return "C"w;
+		return "C";
 	} else static if (is(T == char*)) {
-		return "F"w;
+		return "F";
 	}
 }
 
@@ -158,20 +166,19 @@ wstring[10] descr_(alias Func)() {
 	import std.traits : hasUDA, getUDAs;
 	import std.algorithm : filter, startsWith;
 	static assert(hasUDA!(exportedFunction, Xll));
-	wstring[10] result;
 
 	debug { uint argCtr; }
 	auto xll = getUDAs!(Func, Xll)[0];
-	pragma(msg, getUDAs!(Func, Xll)[0]);
+/*	pragma(msg, getUDAs!(Func, Xll)[0]);
 	foreach(_member;__traits(derivedMembers, typeof(xll))) {
 		static if (_member.startsWith("Xll")) {
-			pragma(msg, _member);
-			auto member = __traits(getMember, xll, _member);
-			pragma(msg, typeof(member));
+ 		auto member = __traits(getMember, xll, _member);
 			debug { assert(typeof(member).xllArgPosition == argCtr++); }
 			result[typeof(member).xllArgPosition] = member;
 		}
+
 	}
+*/
 
 	return xll.args;
 
@@ -199,4 +206,3 @@ extern (C) @Xll(xllProcedure!("AddOne"), xllCategory!("SimpleMath"), xllType!("B
 	double exportedFunction(double ctr) { return ctr++; }
 
 static assert(descr_!(exportedFunction) == ["AddOne"w, "BB"w, ""w, ""w, ""w, "SimpleMath"w, ""w, ""w, "Adds one to the argument"w, ""w ]);
-pragma(msg, descr_!(exportedFunction));
