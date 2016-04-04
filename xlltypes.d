@@ -93,8 +93,13 @@ Blocked by DMD bug
 	XloperType type;
 	
 	this(string _string) {
-		this.type = XloperType.xltypeStr;
+		type = XloperType.xltypeStr;
 		
+	}
+	
+	this(short val) {
+		type = XloperType.xltypeInt;
+		integer = val;
 	}
 
 }
