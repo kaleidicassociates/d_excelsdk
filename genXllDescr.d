@@ -1,53 +1,53 @@
 module genxlldescr;
 import xlltypes;
-
+const pure {
 auto xllProcedure(string _xllText)() {
 	return XllProcedure!_xllText.init;	
 }
 
-struct XllProcedure(wstring _xllText) {
+uint xllProcedure() {
+	return 0;
+}
+
+struct XllProcedure(string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
-	enum xllArgPosition = 0;
-	static T opCast(T:int)() {
-		return xllArgPosition;
-	}
-
+	enum xllArgPosition = xllProcedure;
 }
 
 auto xllType(string _xllText)() {
 	return XllType!_xllText.init;
 }
 
-struct XllType(wstring _xllText) {
+uint xllType() {
+	return 1;
+}
+
+struct XllType(string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
-	enum xllArgPosition = 1;
-	static T opCast(T:int)() {
-		return xllArgPosition;
-	}
-
+	enum xllArgPosition = xllType;
 }
 
 auto xllFunction(string _xllText)() {
 	return XllFunction!_xllText.init;
 }
 
-struct XllFunction(wstring _xllText) {
+uint xllFunction() {
+	return 2;
+}
+
+struct XllFunction(string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
-	enum xllArgPosition = 2;
-	static T opCast(T:int)() {
-		return xllArgPosition;
-	}
-
+	enum xllArgPosition = xllFunction;
 }
 
 auto xllArgument(string _xllText)() {
 	return XllArgument!_xllText.init;
 }
 
-struct XllArgument (wstring _xllText) {
+struct XllArgument (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 3;
@@ -57,7 +57,7 @@ auto xllMacroType(string _xllText)() {
 	return XllMacroType!_xllText.init;
 }
 
-struct XllMacroType (wstring _xllText) {
+struct XllMacroType (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 4;
@@ -67,7 +67,7 @@ auto xllCategory(string _xllText)() {
 	return XllCategory!_xllText.init;
 }
 
-struct XllCategory (wstring _xllText) {
+struct XllCategory (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 5;
@@ -77,7 +77,7 @@ auto xllShortcut(string _xllText)() {
 	return XllShortcut!_xllText.init;
 }
 
-struct XllShortcut (wstring _xllText) {
+struct XllShortcut (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 6;
@@ -87,35 +87,33 @@ auto xllHelpTopic(string _xllText)() {
 	return XllHelpTopic!_xllText.init;
 }
 
-struct XllHelpTopic (wstring _xllText) {
+struct XllHelpTopic (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 7;
 }
 
-auto xllFunctionHelp(wstring _xllText)() {
+auto xllFunctionHelp(string _xllText)() {
 	return XllFunctionHelp!_xllText.init;
 }
 
-struct XllFunctionHelp (wstring _xllText) {
+struct XllFunctionHelp (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 8;
-	static T opCast(T:int)() {
-		return xllArgPosition;
-	}
+
 }
 
 auto xllArgumentHelp(string _xllText, uint argN = 0)() {
 	return XllArgumentHelp!(_xllText.init, argN);
 }
 
-struct XllArgumentHelp(wstring _xllText, uint argN) {
+struct XllArgumentHelp(string _xllText, uint argN) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 9 + argN;
 }
-
+}
 struct Xll {
 /*
 	XllProcedure xllProcedure;
@@ -128,7 +126,7 @@ struct Xll {
 	XllFunctionHelp xllFunctionHelp;
 	XllArgumentHelp xllArgumentHelp;
 */
-	wstring[10] args;
+	string[10] args;
 
 	this (T...) (T _args) /*if (args.allStatisfy!(t => (is(t.xllText : string) && is(t.xllArgPosition : uint)))) */ {
 		import std.algorithm : startsWith, filter; 
@@ -152,8 +150,8 @@ string typeText(T)(T t) {
 	// are C and F the same ?
 	// F is modified in place
 	// C is not
-	static if (is(T == XlOper4)) {
-		return "R";
+	static if (is(T == Xloper12)) {
+		return "O";
 	} else static if (is(T == double)) {
 		return "B";
 	} else static if (is(T == double*)) {
@@ -179,12 +177,11 @@ string typeText(T)(T t) {
 	assert(0, "Cannot find mangle for "  ~ T.stringof);
 }
 
-wstring[10] descr_(alias Func)() {
+string[10] descr_(alias Func)() {
 	import std.traits : hasUDA, getUDAs;
 	import std.algorithm : filter, startsWith;
 	static assert(hasUDA!(exportedFunction, Xll));
 
-	debug { uint argCtr; }
 	auto xll = getUDAs!(Func, Xll)[0];
 /*	pragma(msg, getUDAs!(Func, Xll)[0]);
 	foreach(_member;__traits(derivedMembers, typeof(xll))) {
@@ -197,29 +194,28 @@ wstring[10] descr_(alias Func)() {
 	}
 */
 
-	if(!xll.args[XllProcedure]) {
-		xll.args[XllProcedure] = __traits(identifier, Func);
+	if(!xll.args[xllProcedure]) {
+		xll.args[xllProcedure] = __traits(identifier, Func);
 	}
-	if(xll.args[XllType] == "") /*XllType*/ {
-		import std.range : join;
+	if(xll.args[xllType] == "") /*XllType*/ {
+		import std.range : join, iota;
+		import std.array : array;
 		import std.algorithm : map;
 		import std.traits : Parameters, ReturnType;
-		if (is(ReturnType!Func)) {
-			xll.args[XllType] = typeText(ReturnType!Func.init);
+		static if (is(ReturnType!Func)) {
+			xll.args[xllType] = typeText(ReturnType!Func.init);
 		} else {
-			assert(0, "Functions without returnType are unsupported");
+			static assert(0, "Functions without returnType are unsupported");
 		}
-		if (auto nParams = Parameters!Func.length) {
-			xll.args[XllType] ~= iota(0, nParams)
-				.map!(n => typeText(Parameters!Func[n].init))
-				.join;
-		} 
-		
-	}
-	if(xll.args[XllFunction] == "") {
-		xll.args[XllProcedure] = __traits(identifier, Func);
-	}
+		foreach(p;Parameters!Func) {
+			xll.args[xllType] ~= typeText(p.init);
+		}
 
+	}
+	if(xll.args[xllFunction] == "") {
+		xll.args[xllFunction] = __traits(identifier, Func);
+	}
+	//pragma(msg, "mangle for function ", __traits(identifier, Func), "is ", xll.args[xllType]);
 	return xll.args;
 
 
@@ -242,7 +238,7 @@ wstring[10] descr_(alias Func)() {
 
 //// unittest
 
-extern (C) @Xll(xllProcedure!("AddOne"), xllCategory!("SimpleMath"), xllType!("BB"), xllFunctionHelp!("Adds one to the argument")) 
+extern (C) @Xll(xllCategory!("SimpleMath"), xllFunctionHelp!("Adds one to the argument")) 
 	double exportedFunction(double ctr) { return ctr++; }
-
-static assert(descr_!(exportedFunction) == ["AddOne"w, "BB"w, ""w, ""w, ""w, "SimpleMath"w, ""w, ""w, "Adds one to the argument"w, ""w ]);
+pragma(msg, descr_!exportedFunction);
+static assert(descr_!(exportedFunction) == ["exportedFunction", "BB", "exportedFunction", "", "", "SimpleMath", "", "", "Adds one to the argument", ""]);
