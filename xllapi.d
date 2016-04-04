@@ -463,9 +463,26 @@ private {
 		return mxin;
 	}
 }
- 
+/* 
+Xloper4 Excel4(XlFn xlfn, ref Xloper4 arg) {
+	Xloper4 result;
+	int retval;
+	retval = Excel4f(xlfn, &result, 1, &arg);
+	//TODO figure out meaning of retval
+	// assert(retval);
+	return  result; 	
+}*/
 
-Xloper4 Excel4(int N)(XlFn xlfn, Xloper4[N] args) {
+Xloper12 Excel12(XlFn xlfn, ref Xloper12 arg) {
+	Xloper12 result;
+	int retval;
+	retval = Excel12f(xlfn, &result, 1, &arg);
+	//TODO figure out meaning of retval
+	// assert(retval);
+	return  result; 	
+}
+
+Xloper4 Excel4(int N)(XlFn xlfn, const ref Xloper4[N] args) {
 	Xloper4 result;
 	int retval;
 	mixin(genArgsMixin(ExcelVersion.Excel4, N));
@@ -474,13 +491,11 @@ Xloper4 Excel4(int N)(XlFn xlfn, Xloper4[N] args) {
 	return  result; 	
 }
 
-
-
-Xloper12 Excel12(int N)(XlFn xlfn, Xloper12[N] args) {
+Xloper12 Excel12(int N)(XlFn xlfn, const ref Xloper12[N] args) {
 	Xloper12 result;
 	int retval;
 	mixin(genArgsMixin(ExcelVersion.Excel12, N));
-	pragma(msg, genArgsMixin(ExcelVersion.Excel12, N));
+	//TODO figure out meaning of retval
 	// assert(retval);
 	return  result; 	
 }
@@ -490,11 +505,11 @@ void unittest_()  {
 
 	extern(Windows) @Xll short showVal(short val) {
 		Xloper12 xStr;
+		Xloper12[2] params = [Xloper12(val), Xloper12(XloperType.xltypeInt)];
+		xStr = Excel12(XlFn.xlCoerce, params);
 
-		xStr = Excel12(XlFn.xlCoerce, [Xloper12(12), Xloper12(XloperType.xltypeInt)]);
-
-		Excel12(XlFn.xlcAlert,  [xStr]);
-		Excel12(XlFn.xlFree, [xStr]);
+		Excel12(XlFn.xlcAlert,  xStr);
+		Excel12(XlFn.xlFree, xStr);
 
 		return 1;
 	}
