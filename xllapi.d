@@ -453,12 +453,12 @@ private {
 		import std.algorithm : map;
 
 		string argString = iota(0, n)
-			.map!(i => format(q{&(args[%d])}, i))
+			.map!(i => format(q{&args[%d]}, i))
 			.join(", ");
 
-		string mxin = format(q{
-		retval = Excel%df(xlfn, &result, %d, %s);
-		}, eVer, eVer, argString);
+		string mxin = format(
+		q{retval = Excel%df(xlfn, &result, %d, %s);},
+		eVer, n, argString);
 
 		return mxin;
 	}
@@ -479,7 +479,8 @@ Xloper4 Excel4(int N)(XlFn xlfn, Xloper4[N] args) {
 Xloper12 Excel12(int N)(XlFn xlfn, Xloper12[N] args) {
 	Xloper12 result;
 	int retval;
-	mixin(genArgsMixin(ExcelVersion.Excel12, N));	
+	mixin(genArgsMixin(ExcelVersion.Excel12, N));
+	pragma(msg, genArgsMixin(ExcelVersion.Excel12, N));
 	// assert(retval);
 	return  result; 	
 }
