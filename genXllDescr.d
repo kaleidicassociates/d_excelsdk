@@ -129,10 +129,8 @@ struct Xll {
 	string[10] args;
 
 	this (T...) (T _args) /*if (args.allStatisfy!(t => (is(t.xllText : string) && is(t.xllArgPosition : uint)))) */ {
-		import std.algorithm : startsWith, filter; 
 		foreach(arg;_args) {
 			static if (is(typeof(arg.xllArgPosition))) {
-				pragma(msg, "Assigning arg (", arg.xllArgPosition, ") : ", arg.xllText);
 				args[arg.xllArgPosition] = arg; 
 			}
 		}
@@ -143,7 +141,7 @@ struct Xll {
 
 template descr(alias exportedFunction) {
 	enum descr = mixin(descr_!exportedFunction);
-	static assert(is(typeof(descr) == wstring[]));
+	static assert(is(typeof(descr) : string[]));
 }
 
 string typeText(T)(T t) {
@@ -181,8 +179,13 @@ string[10] descr_(alias Func)() {
 	import std.traits : hasUDA, getUDAs;
 	import std.algorithm : filter, startsWith;
 	static assert(hasUDA!(exportedFunction, Xll));
-
-	auto xll = getUDAs!(Func, Xll)[0];
+	
+	static if (!getUDAs!(Func, Xll).length) {
+		auto xll = Xll.init;
+	} else {
+		auto xll = getUDAs!(Func, Xll)[0];
+	}
+ 	
 /*	pragma(msg, getUDAs!(Func, Xll)[0]);
 	foreach(_member;__traits(derivedMembers, typeof(xll))) {
 		static if (_member.startsWith("Xll")) {
@@ -240,5 +243,5 @@ string[10] descr_(alias Func)() {
 
 extern (C) @Xll(xllCategory!("SimpleMath"), xllFunctionHelp!("Adds one to the argument")) 
 	double exportedFunction(double ctr) { return ctr++; }
-pragma(msg, descr_!exportedFunction);
+//pragma(msg, descr_!exportedFunction);
 static assert(descr_!(exportedFunction) == ["exportedFunction", "BB", "exportedFunction", "", "", "SimpleMath", "", "", "Adds one to the argument", ""]);
