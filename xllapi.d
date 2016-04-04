@@ -485,17 +485,17 @@ Xloper12 Excel12(int N)(XlFn xlfn, Xloper12[N] args) {
 	return  result; 	
 }
 
+void unittest_()  { 
+	import genxlldescr; 
 
-export extern(Windows) short showVal(short val) {
-	Xloper12 xStr;
+	extern(Windows) @Xll short showVal(short val) {
+		Xloper12 xStr;
 
-	xStr = Excel12(XlFn.xlCoerce, [Xloper12(12), Xloper12(XloperType.xltypeInt)]);
+		xStr = Excel12(XlFn.xlCoerce, [Xloper12(12), Xloper12(XloperType.xltypeInt)]);
 
-	Excel12(XlFn.xlcAlert,  [xStr]);
-	Excel12(XlFn.xlFree, [xStr]);
+		Excel12(XlFn.xlcAlert,  [xStr]);
+		Excel12(XlFn.xlFree, [xStr]);
 
-	return 1;
-}
-void _unittest() {
-	
+		return 1;
+	}
 }

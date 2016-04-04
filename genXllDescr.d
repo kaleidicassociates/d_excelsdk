@@ -1,4 +1,4 @@
-module genXllDescr;
+module genxlldescr;
 import xlltypes;
 
 auto xllProcedure(string _xllText)() {
@@ -9,6 +9,10 @@ struct XllProcedure(wstring _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 0;
+	static T opCast(T:int)() {
+		return xllArgPosition;
+	}
+
 }
 
 auto xllType(string _xllText)() {
@@ -19,6 +23,10 @@ struct XllType(wstring _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 1;
+	static T opCast(T:int)() {
+		return xllArgPosition;
+	}
+
 }
 
 auto xllFunction(string _xllText)() {
@@ -29,6 +37,10 @@ struct XllFunction(wstring _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 2;
+	static T opCast(T:int)() {
+		return xllArgPosition;
+	}
+
 }
 
 auto xllArgument(string _xllText)() {
@@ -89,6 +101,9 @@ struct XllFunctionHelp (wstring _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 8;
+	static T opCast(T:int)() {
+		return xllArgPosition;
+	}
 }
 
 auto xllArgumentHelp(string _xllText, uint argN = 0)() {
@@ -133,7 +148,7 @@ template descr(alias exportedFunction) {
 	static assert(is(typeof(descr) == wstring[]));
 }
 
-char typeText(T)(T t) {
+string typeText(T)(T t) {
 	// are C and F the same ?
 	// F is modified in place
 	// C is not
@@ -160,6 +175,8 @@ char typeText(T)(T t) {
 	} else static if (is(T == char*)) {
 		return "F";
 	}
+	
+	assert(0, "Cannot find mangle for "  ~ T.stringof);
 }
 
 wstring[10] descr_(alias Func)() {
@@ -179,6 +196,29 @@ wstring[10] descr_(alias Func)() {
 
 	}
 */
+
+	if(!xll.args[XllProcedure]) {
+		xll.args[XllProcedure] = __traits(identifier, Func);
+	}
+	if(xll.args[XllType] == "") /*XllType*/ {
+		import std.range : join;
+		import std.algorithm : map;
+		import std.traits : Parameters, ReturnType;
+		if (is(ReturnType!Func)) {
+			xll.args[XllType] = typeText(ReturnType!Func.init);
+		} else {
+			assert(0, "Functions without returnType are unsupported");
+		}
+		if (auto nParams = Parameters!Func.length) {
+			xll.args[XllType] ~= iota(0, nParams)
+				.map!(n => typeText(Parameters!Func[n].init))
+				.join;
+		} 
+		
+	}
+	if(xll.args[XllFunction] == "") {
+		xll.args[XllProcedure] = __traits(identifier, Func);
+	}
 
 	return xll.args;
 
