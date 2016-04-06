@@ -4,7 +4,7 @@ import memorymanager : GetTempMemory;
 
 
 struct Boolean {
-	short _value;
+	@property short _value;
 	@property bool asBool() pure {
 		return _value != 0;
 	}
@@ -54,7 +54,7 @@ struct XlSRef {
 enum XloperType : ushort {
 	Num = 0x0001,
 	Str = 0x0002,
-	Bool= 0x0004,
+	Bool = 0x0004,
 	Ref =  0x0008,
 	Err = 0x0010,
 	Flow = 0x0020,
@@ -83,9 +83,9 @@ Blocked by DMD bug
 		char* _string; /* xltypeStr */
 		
 		// (XXX): really ??
-		ushort _bool; /* xltypeBool */
+		Boolean _bool; /* xltypeBool */
 		// (ENDXXX)
-		
+	
 		ushort error; /* xltypeErr */
 		short integer; /* xltypeInt */
 	//	Sref sref;
@@ -97,32 +97,42 @@ Blocked by DMD bug
 					uint rows;
 					uint columns;
 					
-					T opIndex(uint x, uint y) {
+					this(Xloper12Array array) {
+						parray = array.parray;
+						rows = array.rows;
+						columns = array.columns;
+					}
+					
+					ElementType!T opIndex(uint x, uint y) {
 						assert(x<columns);
 						assert(y<rows);
 				
 						auto ret = *(parray + (y*columns) + x);
-						return ret!(v => cast(T) v);
+						return ret!(v => cast(T) v);		
 					}
+					
 				} else {
 					ulong length;
+					
+					this(Xloper12Array array) {
+						parray = array.parray;
+						length = array.columns * array.rows;
+					}
 					
 					T opIndex(ulong pos) {
 						auto ret = *(parray + pos);
 						return ret!(v => cast(T) v);
 					}
-				}
-				
-				this(Xloper12Array array) {
-					parray = array.parray;
-					static if (isArray!T) {
-						rows = array.rows;
-						cols = array.columns;
-					} else {
-						length = array.columns * array.rows;
+					
+					@property T[] toArray() {
+						import typeutils.heaparray;
+						import std.algorithm : map;
+						import std.array.array;
+						return TempHeapSlice!(TempAllocateExcel, T)(this.toArrayRange.map!(v => v!(v2 => cast(T) v2)).array);
 					}
 				}
 			}
+		
 		
 			Xloper12* parray;
 			uint rows;
@@ -135,17 +145,18 @@ Blocked by DMD bug
 				return parray + (y*columns) + x;
 			}
 			
-			auto toArray (T)() {
+			auto toSlice (T)() {
 				static if (isArray!T) { 
 					static if (!isArray!(ElementTypes!T)) {
 						//2d array.
+						return autoConvertSlice!T(this);
 					} else {
 						// it's 3d or more
 						assert(0, "only 1d or 2d arrays are supported");
 					}
 				} else {
 					//1d slice
-					return autoConvertSlice!T;
+					return autoConvertSlice!T(this);
 				}
 			}
 		}
@@ -183,6 +194,10 @@ Blocked by DMD bug
 		num = val;
 	}
 	
+	this (bool val) {
+		type = XloperType.Bool;
+	}
+	
 	R opCall(alias handler)() {
 		switch(type) with (XloperType) {
 			case Int : 
@@ -197,6 +212,13 @@ Blocked by DMD bug
 				} else {
 					assert(0, "Hander is not callable with type double");
 				}
+			case Bool : 
+				static if (is(typeof(handler(_bool.init)))) {
+					return handler(_bool);
+				} else {
+					assert(0, "Hander is not callable with type (Boolean / bool)");
+				}
+			
 			default :
 				import std.conv : to;
 				assert(0, "Type " ~ to!string(type) ~ " is not supported right now");
