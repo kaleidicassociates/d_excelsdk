@@ -265,7 +265,7 @@ extern(Windows)
 		VAL val;
 		DWORD xltype;
 	}
-
+	pragma(msg, XLOPER12.VAL.FLOW.sizeof);
 	alias LPXLOPER12=XLOPER12*;
 
 	/**

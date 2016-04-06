@@ -1,5 +1,5 @@
 module xllapi;
-import xlltypes;
+public import xlltypes;
 /** 
  This module containts the C api exported from execel
  */
@@ -457,8 +457,9 @@ private {
 			.join(", ");
 
 		string mxin = format(
-		q{retval = Excel%df(xlfn, &result, %d, %s);},
-		eVer, n, argString);
+			q{retval = Excel%df(xlfn, &result, %d, %s);},
+							eVer, 				n, argString
+		);
 
 		return mxin;
 	}
@@ -468,8 +469,7 @@ Xloper4 Excel4(XlFn xlfn, ref Xloper4 arg) {
 	Xloper4 result;
 	int retval;
 	retval = Excel4f(xlfn, &result, 1, &arg);
-	//TODO figure out meaning of retval
-	// assert(retval);
+	assert(!retval);
 	return  result; 	
 }*/
 
@@ -477,40 +477,22 @@ Xloper12 Excel12(XlFn xlfn, ref Xloper12 arg) {
 	Xloper12 result;
 	int retval;
 	retval = Excel12f(xlfn, &result, 1, &arg);
-	//TODO figure out meaning of retval
-	// assert(retval);
-	return  result; 	
+	assert(!retval);
+	return result; 	
 }
-
+/*
 Xloper4 Excel4(int N)(XlFn xlfn, const ref Xloper4[N] args) {
 	Xloper4 result;
 	int retval;
 	mixin(genArgsMixin(ExcelVersion.Excel4, N));
-	//TODO figure out meaning of retval
-	// assert(retval);
-	return  result; 	
+	assert(!retval);
+	return result; 	
 }
-
+*/
 Xloper12 Excel12(int N)(XlFn xlfn, const ref Xloper12[N] args) {
 	Xloper12 result;
 	int retval;
 	mixin(genArgsMixin(ExcelVersion.Excel12, N));
-	//TODO figure out meaning of retval
-	// assert(retval);
-	return  result; 	
-}
-
-void unittest_()  { 
-	import genxlldescr; 
-
-	extern(Windows) @Xll short showVal(short val) {
-		Xloper12 xStr;
-		Xloper12[2] params = [Xloper12(val), Xloper12(XloperType.xltypeInt)];
-		xStr = Excel12(XlFn.xlCoerce, params);
-
-		Excel12(XlFn.xlcAlert,  xStr);
-		Excel12(XlFn.xlFree, xStr);
-
-		return 1;
-	}
+	assert(!retval);
+	return result; 	
 }

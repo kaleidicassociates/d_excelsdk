@@ -52,23 +52,25 @@ struct XlSRef {
 }
 
 enum XloperType : ushort {
-	xltypeNum = 0x0001,
-	xltypeStr = 0x0002,
-	xltypeBool= 0x0004,
-	xltypeRef =  0x0008,
-	xltypeErr = 0x0010,
-	xltypeFlow = 0x0020,
-	xltypeMulti = 0x0040,
-	xltypeMissing = 0x0080,
-	xltypeNil =  0x0100,
-	xltypeSRef = 0x0400,
-	xltypeInt = 0x0800,
+	Num = 0x0001,
+	Str = 0x0002,
+	Bool= 0x0004,
+	Ref =  0x0008,
+	Err = 0x0010,
+	Flow = 0x0020,
+	Multi = 0x0040,
+	Missing = 0x0080,
+	Nil =  0x0100,
+	SRef = 0x0400,
+	Int = 0x0800,
 	
-	xltypeBigData = (xltypeStr | xltypeInt)
+	BigData = (Str | Int)
 }
 
-struct Xloper12
-{	
+
+
+struct Xloper12 //XXX Xloper12.sizeof has to be 32
+{
 /*
 Blocked by DMD bug
 	static struct Sref {
@@ -87,21 +89,120 @@ Blocked by DMD bug
 		ushort error; /* xltypeErr */
 		short integer; /* xltypeInt */
 	//	Sref sref;
-		
-	}
 	
+		static struct Xloper12Array {
+			private static struct autoConvertSlice(T) {
+				Xloper12* parray;
+				static if (isArray!T) {
+					uint rows;
+					uint columns;
+					
+					T opIndex(uint x, uint y) {
+						assert(x<columns);
+						assert(y<rows);
+				
+						auto ret = *(parray + (y*columns) + x);
+						return ret!(v => cast(T) v);
+					}
+				} else {
+					ulong length;
+					
+					T opIndex(ulong pos) {
+						auto ret = *(parray + pos);
+						return ret!(v => cast(T) v);
+					}
+				}
+				
+				this(Xloper12Array array) {
+					parray = array.parray;
+					static if (isArray!T) {
+						rows = array.rows;
+						cols = array.columns;
+					} else {
+						length = array.columns * array.rows;
+					}
+				}
+			}
+		
+			Xloper12* parray;
+			uint rows;
+			uint columns;
+			
+			Xloper12* opIndex(uint x, uint y) {
+				assert(x<columns);
+				assert(y<rows);
+				
+				return parray + (y*columns) + x;
+			}
+			
+			auto toArray (T)() {
+				static if (isArray!T) { 
+					static if (!isArray!(ElementTypes!T)) {
+						//2d array.
+					} else {
+						// it's 3d or more
+						assert(0, "only 1d or 2d arrays are supported");
+					}
+				} else {
+					//1d slice
+					return autoConvertSlice!T;
+				}
+			}
+		}
+		
+		Xloper12Array array;
+		
+		static struct Xloper12Flow {
+			union {
+				int level;			/* xlflowRestart */
+				int tbctrl;			/* xlflowPause */
+				uint* idSheet;		/* xlflowGoto */
+			}
+			uint rw;				       	/* xlflowGoto */
+			uint col;			       	/* xlflowGoto */
+			ubyte xlflow;
+		}			
+		
+		Xloper12Flow flow;
+	}
+
 	XloperType type;
 	
 	this(string _string) {
-		type = XloperType.xltypeStr;
-		
+		type = XloperType.Str;
+		assert(0, "strings are not supported at the moment");
 	}
 	
 	this(short val) {
-		type = XloperType.xltypeInt;
+		type = XloperType.Int;
 		integer = val;
 	}
-
+	
+	this(double val) {
+		type = XloperType.Num;
+		num = val;
+	}
+	
+	R opCall(alias handler)() {
+		switch(type) with (XloperType) {
+			case Int : 
+				static if (is(typeof(handler(integer.init)))) {
+					return handler(integer);
+				} else {
+					assert(0, "Handler is not callable with type short");
+				}
+			case Num : 
+				static if (is(typeof(handler(num.init)))) {
+					return handler(num);
+				} else {
+					assert(0, "Hander is not callable with type double");
+				}
+			default :
+				import std.conv : to;
+				assert(0, "Type " ~ to!string(type) ~ " is not supported right now");
+		}
+	}
 }
 
 
+static assert(Xloper12.Xloper12Flow.sizeof == 16);

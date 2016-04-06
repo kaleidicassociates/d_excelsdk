@@ -101,7 +101,6 @@ struct XllFunctionHelp (string _xllText) {
 	enum xllText = _xllText;
 	alias xllText this;
 	enum xllArgPosition = 8;
-
 }
 
 auto xllArgumentHelp(string _xllText, uint argN = 0)() {
@@ -172,7 +171,7 @@ string typeText(T)(T t) {
 		return "F";
 	}
 	
-	assert(0, "Cannot find mangle for "  ~ T.stringof);
+	static assert(0, "Cannot find mangle for "  ~ T.stringof);
 }
 
 string[10] descr_(alias Func)() {
@@ -200,11 +199,9 @@ string[10] descr_(alias Func)() {
 	if(!xll.args[xllProcedure]) {
 		xll.args[xllProcedure] = __traits(identifier, Func);
 	}
-	if(xll.args[xllType] == "") /*XllType*/ {
-		import std.range : join, iota;
-		import std.array : array;
-		import std.algorithm : map;
+	if(!xll.args[xllType]) {
 		import std.traits : Parameters, ReturnType;
+		
 		static if (is(ReturnType!Func)) {
 			xll.args[xllType] = typeText(ReturnType!Func.init);
 		} else {
@@ -215,7 +212,7 @@ string[10] descr_(alias Func)() {
 		}
 
 	}
-	if(xll.args[xllFunction] == "") {
+	if(!xll.args[xllFunction]) {
 		xll.args[xllFunction] = __traits(identifier, Func);
 	}
 	//pragma(msg, "mangle for function ", __traits(identifier, Func), "is ", xll.args[xllType]);
