@@ -12,8 +12,8 @@
 */
 
 // import windows.h
-import std.c.windows.windows;
-//import core.sys.windows.windows;
+//import std.c.windows.windows;
+import core.sys.windows.windows;
 import xlcall;
 import core.vararg;
 
@@ -90,7 +90,7 @@ int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 			foreach(i,arg;args)
 				rgxloper12[ioper] = arg;
 //			original line was mdRet = (pexcel12)(xlfn, count, &rgxloper12[0], operRes);
-			mdRet = (*pexcel12)(xlfn, args.length, rgxloper12.ptr, operRes);
+			mdRet = (*pexcel12)(xlfn, cast(int)args.length, rgxloper12.ptr, operRes);
 		}
 	}
 	return(mdRet);
