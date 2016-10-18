@@ -30,8 +30,7 @@ extern(Windows)
 // Global Variables
 __gshared HANDLE g_hInst = null;
 
-extern(Windows)
-double FuncMulByTwo(double n) {
+extern(C) export double FuncMulByTwo(double n) {
     return n * 2;
 }
 
