@@ -86,18 +86,20 @@ extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
     return cast(LPXLOPER12) &xResult;
 }
 
+// for what these mean see:
+// https://msdn.microsoft.com/en-us/library/office/bb687900.aspx
 __gshared wstring[][] g_rgWorksheetFuncs =
 [
-	[ "FuncFib"w,
-		"UU"w,
-		"FuncFib"w,
-		"Compute to..."w,
-		"1"w,
-		"MyXLL"w,
-		""w,
-		""w,
-		"Number to compute to"w
-		"Computes the nth fibonacci number"w,
+    [ "FuncFib"w, //Procedure
+		"UU"w, //TypeText
+		"FuncFib"w, //FunctionText
+		"Compute to..."w, //ArgumentText
+		"1"w, //MacroType
+		"MyXLL"w, //Category
+		""w, //ShortcutText
+		""w, //HelpTopic
+		"Number to compute to"w // FunctionHelp
+		"Computes the nth fibonacci number"w, //ArgumentHelp1
 	],
 	[ "FuncMulByTwo"w,
 		"BB"w,
