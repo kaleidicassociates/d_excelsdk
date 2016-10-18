@@ -1,4 +1,4 @@
-generic32.lib
-generic32.obj
-generic32.xll
-generic32.map
+*.lib
+*.obj
+*.xll
+*.map
