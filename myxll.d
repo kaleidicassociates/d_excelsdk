@@ -30,6 +30,11 @@ extern(Windows)
 // Global Variables
 __gshared HANDLE g_hInst = null;
 
+extern(Windows)
+double FuncMulByTwo(double n) {
+    return n * 2;
+}
+
 extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
 {
 	static XLOPER12 xResult;
@@ -82,74 +87,34 @@ extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
     return cast(LPXLOPER12) &xResult;
 }
 
-
-/**
-   Syntax of the Register Command:
-        REGISTER(module_text, procedure, type_text, function_text,
-                 argument_text, macro_type, category, shortcut_text,
-                 help_topic, function_help, argument_help1, argument_help2,...)
-
-
-   g_rgWorksheetFuncs will use only the first 11 arguments of
-   the Register function.
-
-   This is a table of all the worksheet functions exported by this module.
-   These functions are all registered (in xlAutoOpen) when you
-   open the XLL. Before every string, leave a space for the
-   byte count. The format of this table is the same as
-   arguments two through eleven of the REGISTER function.
-   g_rgWorksheetFuncsRows define the number of rows in the table. The
-   g_rgWorksheetFuncsCols represents the number of columns in the table.
-*/
-enum g_rgWorksheetFuncsRows = 1;
-enum g_rgWorksheetFuncsCols = 10;
-
-
-__gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetFuncs =
+__gshared wstring[][] g_rgWorksheetFuncs =
 [
 	[ "FuncFib"w,
 		"UU"w,
 		"FuncFib"w,
 		"Compute to..."w,
 		"1"w,
-		"Generic Add-In"w,
+		"MyXLL"w,
 		""w,
 		""w,
 		"Number to compute to"w
 		"Computes the nth fibonacci number"w,
 	],
+	[ "FuncMulByTwo"w,
+		"BB"w,
+		"FuncMulByTwo"w,
+		"Multiply By two"w,
+		"1"w,
+		"MyXLL"w,
+		""w,
+		""w,
+		"Number to multiply"w
+		"Multiplies by 2"w,
+	],
 ];
 
 
-/**
-   DllMain()
-
-   Purpose:
-
-        Windows calls DllMain, for both initialization and termination.
-  		It also makes calls on both a per-process and per-thread basis,
-  		so several initialization calls can be made if a process is multithreaded.
-
-        This function is called when the DLL is first loaded, with a dwReason
-        of DLL_PROCESS_ATTACH.
-
-   Parameters:
-
-        HANDLE hDLL         Module handle.
-        DWORD dwReason,     Reason for call
-        LPVOID lpReserved   Reserved
-
-   Returns:
-        The function returns true (1) to indicate success. If, during
-        per-process initialization, the function returns zero,
-        the system cancels the process.
-
-   Comments:
-
-   History:  Date       Author        Reason
-*/
-
-extern(Windows) BOOL /*APIENTRY*/ DllMain( HANDLE hDLL, DWORD dwReason, LPVOID lpReserved )
+extern(Windows) BOOL DllMain( HANDLE hDLL, DWORD dwReason, LPVOID lpReserved )
 {
 	import core.runtime;
 	import std.c.windows.windows;
@@ -179,50 +144,6 @@ extern(Windows) BOOL /*APIENTRY*/ DllMain( HANDLE hDLL, DWORD dwReason, LPVOID l
 	return true;
 }
 
-/**
-   xlAutoOpen()
-
-   Purpose:
-        Microsoft Excel call this function when the DLL is loaded.
-
-        Microsoft Excel uses xlAutoOpen to load XLL files.
-        When you open an XLL file, the only action
-        Microsoft Excel takes is to call the xlAutoOpen function.
-
-        More specifically, xlAutoOpen is called:
-
-         - when you open this XLL file from the File menu,
-         - when this XLL is in the XLSTART directory, and is
-           automatically opened when Microsoft Excel starts,
-         - when Microsoft Excel opens this XLL for any other reason, or
-         - when a macro calls REGISTER(), with only one argument, which is the
-           name of this XLL.
-
-        xlAutoOpen is also called by the Add-in Manager when you add this XLL
-        as an add-in. The Add-in Manager first calls xlAutoAdd, then calls
-        REGISTER("EXAMPLE.XLL"), which in turn calls xlAutoOpen.
-
-        xlAutoOpen should:
-
-         - register all the functions you want to make available while this
-           XLL is open,
-
-         - add any menus or menu items that this XLL supports,
-
-         - perform any other initialization you need, and
-
-         - return 1 if successful, or return 0 if your XLL cannot be opened.
-
-   Parameters:
-
-   Returns:
-
-        int         1 on success, 0 on failure
-
-   Comments:
-
-   History:  Date       Author        Reason
-*/
 
 extern(Windows) int xlAutoOpen()
 {
@@ -247,35 +168,6 @@ extern(Windows) int xlAutoOpen()
 
 	return 1;
 }
-
-
-/**
-   xlAddInManagerInfo12()
-
-   Purpose:
-
-        This function is called by the Add-in Manager to find the long name
-        of the add-in. If xAction = 1, this function should return a string
-        containing the long name of this XLL, which the Add-in Manager will use
-        to describe this XLL. If xAction = 2 or 3, this function should return
-        #VALUE!.
-
-   Parameters:
-
-        LPXLOPER12 xAction  What information you want. One of:
-                              1 = the long name of the
-                                  add-in
-                              2 = reserved
-                              3 = reserved
-
-   Returns:
-
-        LPXLOPER12          The long name or #VALUE!.
-
-   Comments:
-
-   History:  Date       Author        Reason
-*/
 
 extern(Windows) LPXLOPER12 xlAddInManagerInfo12(LPXLOPER12 xAction)
 {

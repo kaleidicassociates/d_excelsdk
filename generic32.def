@@ -4,5 +4,6 @@ EXETYPE		NT
 CODE            PRELOAD DISCARDABLE
 DATA            PRELOAD MULTIPLE
 EXPORTS
-                xlAutoOpen      @2
-                FuncFib @19
+                xlAutoOpen
+                FuncFib
+                FuncMulByTwo
