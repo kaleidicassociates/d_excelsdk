@@ -3,7 +3,6 @@ DESCRIPTION     'Simple D add-in to Excel'
 EXETYPE		NT
 CODE            PRELOAD DISCARDABLE
 DATA            PRELOAD MULTIPLE
-LIBRARY "generic64e.xll"
 EXPORTS
                 xlAutoOpen                      @2
                 xlAutoClose                     @3
