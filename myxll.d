@@ -1,91 +1,15 @@
 /**
 	Code from generic.h and generic.d
 	Ported to the D Programming Language by Laeeth Isharc (2015)
-
-	what works: everything except fDance doesn't change active cell, and fShowDialog
-
-	-----
-	File:				GENERIC.H
-
-   Purpose:			Header file for Generic.c
-
-   Platform:    Microsoft Windows
-
-   Updated by Microsoft Product Support Services, Windows Developer Support.
-   From the Microsoft Excel Developer's Kit, Version 14
-   Copyright (c) 1996-2010 Microsoft Corporation. All rights reserved.
- */
-/**
-   File:        GENERIC.C
-
-   Purpose:     Template for creating XLLs for Microsoft Excel.
-
-                This file contains sample code you can use as
-                a template for writing your own Microsoft Excel XLLs.
-                An XLL is a DLL that stands alone, that is, you
-                can open it by choosing the Open command from the
-                File menu. This code demonstrates many of the features
-                of the Microsoft Excel C API.
-
-                When you open GENERIC.XLL, it
-                creates a new Generic menu with four
-                commands:
-
-                    Dialog...          displays a Microsoft Excel dialog box
-                    Dance              moves the selection around
-                                       until you press ESC
-                    Native Dialog...   displays a Windows dialog box
-                    Exit               Closes GENERIC.XLL and
-                                       removes the menu
-
-                GENERIC.XLL also provides three functions,
-                Func1, FuncSum and FuncFib, which can be used whenever
-                GENERIC.XLL is open.
-
-                GENERIC.XLL can also be added with the
-                Add-in Manager.
-
-                This file uses the framework library
-                (FRMWRK32.LIB).
-
-   Platform:    Microsoft Windows
-
-   Functions:
-                DllMain
-                xlAutoOpen
-                xlAutoClose
-                lpstricmp
-                xlAutoRegister12
-                xlAutoAdd
-                xlAutoRemove
-                xlAddInManagerInfo12
-                DIALOGMsgProc
-                ExcelCursorProc
-                HookExcelWindow
-                UnhookExcelWindow
-                fShowDialog
-                GetHwnd
-                Func1
-                FuncSum
-                fDance
-                fDialog
-                fExit
-                FuncFib
-
+	This is the minimum amount of code to get a D function into Excel
 */
-import win32.winuser:PostMessage,CallWindowProc,GetWindowLongPtr,SetWindowLongPtr,DialogBox;
-//import std.c.windows.windows;
+
 import core.sys.windows.windows;
 import xlcall;
 import framework;
-import core.stdc.wchar_ : wcslen;
-import core.stdc.wctype:towlower;
 import std.format;
 import xlld.wrap;
 
-enum GWLP_WNDPROC=-4;
-enum MAXWORD = 0xFFFF;
-debug=0;
 extern(Windows)
 {
 	pragma(lib, "gdi32");
@@ -101,40 +25,12 @@ extern(Windows)
 	pragma(lib, "uuid");
 	pragma(lib, "odbc32");
 	pragma(lib, "xlcall32d");
-	//pragma(lib, "odbccp32");
-	//pragma(lib, "msvcrt32");
-
-	enum GMEM_MOVEABLE = 0x02;
-	void* GlobalAlloc(uint, size_t);
-   void* GlobalLock(void*);
-   bool GlobalUnlock(void*);
-	void cwCenter(HWND, int);
-	//INT_PTR /*CALLBACK*/ DIALOGMsgProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam);
 }
 
-//   identifier for controls
-
-enum FREE_SPACE                  =104;
-enum EDIT                        =101;
-enum TEST_EDIT                   =106;
-
-
-/**
-   Later, the instance handle is required to create dialog boxes.
-   g_hInst holds the instance handle passed in by DllMain so that it is
-   available for later use. hWndMain is used in several routines to
-   store Microsoft Excel's hWnd. This is used to attach dialog boxes as
-   children of Microsoft Excel's main window. A buffer is used to store
-   the free space that DIALOGMsgProc will put into the dialog box.
- */
-
 // Global Variables
-
-__gshared HWND g_hWndMain = null;
 __gshared HANDLE g_hInst = null;
-wchar[20] g_szBuffer = ""w;
 
-extern(Windows) LPXLOPER12 /*WINAPI*/ FuncFib (LPXLOPER12 n)
+extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
 {
 	static XLOPER12 xResult;
 	XLOPER12 xlt;
@@ -221,32 +117,6 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetF
 		""w,
 		"Number to compute to"w
 		"Computes the nth fibonacci number"w,
-	],
-];
-
-/**
-   g_rgCommandFuncs
-
-   This is a table of all the command functions exported by this module.
-   These functions are all registered (in xlAutoOpen) when you
-   open the XLL. Before every string, leave a space for the
-   byte count. The format of this table is the same as
-   arguments two through eight of the REGISTER function.
-   g_rgFuncsRows define the number of rows in the table. The
-   g_rgCommandFuncsCols represents the number of columns in the table.
-*/
-enum g_rgCommandFuncsRows = 1;
-enum g_rgCommandFuncsCols = 7;
-
-__gshared wstring g_rgCommandFuncs[g_rgCommandFuncsRows][g_rgCommandFuncsCols] =
-[
-	[ "fDialog"w,                   // Procedure
-		"A"w,                   // type_text
-		"fDialog"w,             // function_text
-		""w,                    // argument_text
-		"2"w,                   // macro_type
-		"Generic Add-In"w,      // category
-		"l"w                    // shortcut_text
 	],
 ];
 
@@ -354,7 +224,7 @@ extern(Windows) BOOL /*APIENTRY*/ DllMain( HANDLE hDLL, DWORD dwReason, LPVOID l
    History:  Date       Author        Reason
 */
 
-extern(Windows) int /*WINAPI*/ xlAutoOpen()
+extern(Windows) int xlAutoOpen()
 {
 	import std.conv;
 	import core.runtime:rt_init;
@@ -407,7 +277,7 @@ extern(Windows) int /*WINAPI*/ xlAutoOpen()
    History:  Date       Author        Reason
 */
 
-extern(Windows) LPXLOPER12 /*WINAPI*/ xlAddInManagerInfo12(LPXLOPER12 xAction)
+extern(Windows) LPXLOPER12 xlAddInManagerInfo12(LPXLOPER12 xAction)
 {
 	static XLOPER12 xInfo, xIntAction;
 
