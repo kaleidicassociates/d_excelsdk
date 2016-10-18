@@ -134,6 +134,58 @@ __gshared HWND g_hWndMain = null;
 __gshared HANDLE g_hInst = null;
 wchar[20] g_szBuffer = ""w;
 
+extern(Windows) LPXLOPER12 /*WINAPI*/ FuncFib (LPXLOPER12 n)
+{
+	static XLOPER12 xResult;
+	XLOPER12 xlt;
+	int val, max, error = -1;
+	int[2] fib = [1,1];
+	switch (n.xltype)
+	{
+	case xltypeNum:
+		max = cast(int)n.val.num;
+		if (max < 0)
+			error = xlerrValue;
+		for (val = 3; val <= max; val++)
+		{
+			fib[val%2] += fib[(val+1)%2];
+		}
+		xResult.xltype = xltypeNum;
+		xResult.val.num = fib[(val+1)%2];
+		break;
+	case xltypeSRef:
+		error = Excel12f(xlCoerce, &xlt, [n, TempInt12(xltypeInt)]);
+		if (!error)
+		{
+			error = -1;
+			max = xlt.val.w;
+			if (max < 0)
+				error = xlerrValue;
+			for (val = 3; val <= max; val++)
+			{
+				fib[val%2] += fib[(val+1)%2];
+			}
+			xResult.xltype = xltypeNum;
+			xResult.val.num = fib[(val+1)%2];
+		}
+		Excel12f(xlFree, cast(LPXLOPER12)0, [&xlt]);
+		break;
+	default:
+		error = xlerrValue;
+		break;
+	}
+
+	if ( error != - 1 )
+	{
+		xResult.xltype = xltypeErr;
+		xResult.val.err = error;
+	}
+
+	//Word of caution - returning static XLOPERs/XLOPER12s is not thread safe
+	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
+    return cast(LPXLOPER12) &xResult;
+}
+
 
 /**
    Syntax of the Register Command:
@@ -153,58 +205,12 @@ wchar[20] g_szBuffer = ""w;
    g_rgWorksheetFuncsRows define the number of rows in the table. The
    g_rgWorksheetFuncsCols represents the number of columns in the table.
 */
-enum g_rgWorksheetFuncsRows =5;
-enum g_rgWorksheetFuncsCols =10;
+enum g_rgWorksheetFuncsRows = 1;
+enum g_rgWorksheetFuncsCols = 10;
+
 
 __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetFuncs =
 [
-	[ "Func1"w,                                     // Procedure
-		"UU"w,                                  // type_text
-		"Func1"w,                               // function_text
-		"Arg"w,                                 // argument_text
-		"1"w,                                   // macro_type
-		"Generic Add-In"w,                      // category
-		""w,                                    // shortcut_text
-		""w,                                    // help_topic
-		"Always returns the string 'Func1'"w,   // function_help
-		"Argument ignored"w                     // argument_help1
-	],
-	[ "FuncSum"w,
-		"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"w, // up to 255 args in Excel 2007 and later,
-										   // upto 29 args in Excel 2003 and earlier versions
-		"FuncSum"w,
-		"number1,number2,..."w,
-		"1"w,
-		"Generic Add-In"w,
-		""w,
-		""w,
-		"Adds the arguments"w,
-		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w
-	],
-	[ "lastErrorMessage"w,
-		"Q"w, // up to 255 args in Excel 2007 and later,
-										   // upto 29 args in Excel 2003 and earlier versions
-		"lastErrorMessage"w,
-		""w,
-		"1"w,
-		"Generic Add-In"w,
-		""w,
-		""w,
-		"Return last D error message"w,
-		""w,
-	],
-	[ "WrapSquare3"w,
-		"QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ"w, // up to 255 args in Excel 2007 and later,
-										   // upto 29 args in Excel 2003 and earlier versions
-		"WrapSquare3"w,
-		"number1,number2,..."w,
-		"1"w,
-		"Generic Add-In"w,
-		""w,
-		""w,
-		"Sum of squares of the arguments"w,
-		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w
-	],
 	[ "FuncFib"w,
 		"UU"w,
 		"FuncFib"w,
@@ -428,78 +434,4 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAddInManagerInfo12(LPXLOPER12 xAction)
 	//Word of caution - returning static XLOPERs/XLOPER12s is not thread safe
 	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
 	return cast(LPXLOPER12) &xInfo;
-}
-
-
-/**
-   FuncFib()
-
-   Purpose:
-
-        A sample function that computes the nth Fibonacci number.
-        Features a call to several wrapper functions.
-
-   Parameters:
-
-        LPXLOPER12 n    int to compute to
-
-   Returns:
-
-        LPXLOPER12      nth Fibonacci number
-
-   Comments:
-
-   History:  Date       Author        Reason
-*/
-
-extern(Windows) LPXLOPER12 /*WINAPI*/ FuncFib (LPXLOPER12 n)
-{
-	static XLOPER12 xResult;
-	XLOPER12 xlt;
-	int val, max, error = -1;
-	int[2] fib = [1,1];
-	switch (n.xltype)
-	{
-	case xltypeNum:
-		max = cast(int)n.val.num;
-		if (max < 0)
-			error = xlerrValue;
-		for (val = 3; val <= max; val++)
-		{
-			fib[val%2] += fib[(val+1)%2];
-		}
-		xResult.xltype = xltypeNum;
-		xResult.val.num = fib[(val+1)%2];
-		break;
-	case xltypeSRef:
-		error = Excel12f(xlCoerce, &xlt, [n, TempInt12(xltypeInt)]);
-		if (!error)
-		{
-			error = -1;
-			max = xlt.val.w;
-			if (max < 0)
-				error = xlerrValue;
-			for (val = 3; val <= max; val++)
-			{
-				fib[val%2] += fib[(val+1)%2];
-			}
-			xResult.xltype = xltypeNum;
-			xResult.val.num = fib[(val+1)%2];
-		}
-		Excel12f(xlFree, cast(LPXLOPER12)0, [&xlt]);
-		break;
-	default:
-		error = xlerrValue;
-		break;
-	}
-
-	if ( error != - 1 )
-	{
-		xResult.xltype = xltypeErr;
-		xResult.val.err = error;
-	}
-
-	//Word of caution - returning static XLOPERs/XLOPER12s is not thread safe
-	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
-    return cast(LPXLOPER12) &xResult;
 }
