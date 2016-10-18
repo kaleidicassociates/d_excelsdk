@@ -23,4 +23,3 @@ EXPORTS
                 fExit   @18
                 FuncFib @19
                 WrapSquare3 @20
-                lastErrorMessage        @21
