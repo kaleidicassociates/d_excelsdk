@@ -75,30 +75,30 @@ extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {
 
     WorksheetFunction funcFib =
     {
-      procedure: "FuncFib"w,
-      typeText: "UU"w,
-      functionText: "FuncFib"w,
-      argumentText: "Compute to..."w,
-      macroType: "1"w,
-      category: "MyXLL"w,
-      shortcutText: ""w,
-      helpTopic: ""w,
-      functionHelp: "Number to compute to"w,
-      argumentHelp: ["Computes the nth fibonacci number"w],
+        procedure: "FuncFib"w,
+        typeText: "UU"w,
+        functionText: "FuncFib"w,
+        argumentText: "Compute to..."w,
+        macroType: "1"w,
+        category: "MyXLL"w,
+        shortcutText: ""w,
+        helpTopic: ""w,
+        functionHelp: "Number to compute to"w,
+        argumentHelp: ["Computes the nth fibonacci number"w],
     };
 
     WorksheetFunction funcMulByTwo =
     {
-      procedure: "FuncMulByTwo"w,
-      typeText: "BB"w,
-      functionText: "FuncMulByTwo"w,
-      argumentText: "The number to multiply by two"w,
-      macroType: "1"w,
-      category: "MyXLL"w,
-      shortcutText: ""w,
-      helpTopic: ""w,
-      functionHelp: "Number to multiply"w,
-      argumentHelp: ["Argument to multiplication by two"w],
+        procedure: "FuncMulByTwo"w,
+        typeText: "BB"w,
+        functionText: "FuncMulByTwo"w,
+        argumentText: "The number to multiply by two"w,
+        macroType: "1"w,
+        category: "MyXLL"w,
+        shortcutText: ""w,
+        helpTopic: ""w,
+        functionHelp: "Number to multiply"w,
+        argumentHelp: ["Argument to multiplication by two"w],
     };
 
     return [funcFib, funcMulByTwo];

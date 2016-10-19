@@ -1,7 +1,7 @@
 module xlld.traits;
 
 import xlld.worksheet;
-import std.traits: isSomeFunction;
+import std.traits: isSomeFunction, allSatisfy, isSomeString;
 
 version(unittest) {
     import unit_threaded;
@@ -54,7 +54,7 @@ private template isExcelFunction(alias T) {
         enum isExcelFunction = false;
 }
 
-WorksheetFunction[] getExcelFunctions(string moduleName)() {
+WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
     import std.traits: fullyQualifiedName;
     mixin(`import ` ~ fullyQualifiedName!(mixin(moduleName)) ~ `;`);
     alias module_ = Identity!(mixin(moduleName));
@@ -74,9 +74,34 @@ WorksheetFunction[] getExcelFunctions(string moduleName)() {
 
 @("getExcelFunctions on test_module")
 @safe pure unittest {
-    getExcelFunctions!"xlld.test_module".shouldEqual(
+    getModuleExcelFunctions!"xlld.test_module".shouldEqual(
         [
             doubleToDoubleFunction("FuncMulByTwo"),
         ]
     );
+}
+
+WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
+    WorksheetFunction[] ret;
+    foreach(module_; Modules) {
+        ret ~= getModuleExcelFunctions!module_;
+    }
+
+    return ret;
+}
+
+mixin template implGetWorksheetFunctions(Modules...) if(allSatisfy!(isSomeString, typeof(Modules))) {
+    extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {
+        return getAllExcelFunctions!Modules;
+    }
+}
+
+@("template mixin for getWorkSheetFunctions for test_module")
+unittest {
+    import xlld.traits;
+    import xlld.worksheet;
+
+    // mixin the function here then call it to see if it does what it's supposed to
+    mixin implGetWorksheetFunctions!"xlld.test_module";
+    getWorksheetFunctions.shouldEqual([doubleToDoubleFunction("FuncMulByTwo")]);
 }
