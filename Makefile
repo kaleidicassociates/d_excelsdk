@@ -9,7 +9,7 @@ test: bin/ut
 bin/ut: bin/ut.o $(LIB_UT)
 	dmd -of$@ $^
 
-bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d
+bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/test_module.d
 	dmd -c -of$@ -I~/.dub/packages/unit-threaded-0.6.30/unit-threaded/source -unittest -g -debug $^
 
 $(LIB_UT): ~/.dub/packages/unit-threaded-0.6.30/unit-threaded/dub.json
