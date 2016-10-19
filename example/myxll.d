@@ -1,17 +1,24 @@
 /**
 	Code from generic.h and generic.d
 	Ported to the D Programming Language by Laeeth Isharc (2015)
-	This is the minimum amount of code to get a D function into Excel
+	This is an example of how to write D functions that can
+	be called from Excel.
+	The getWorksheetFunctions function returns the necessary
+	binding information
 */
 module myxll;
 
 import xlld;
 
 
+// extern(C) export means it doesn't have to be explicitly
+// added to the .def file
 extern(C) export double FuncMulByTwo(double n) {
     return n * 2;
 }
 
+// extern(Windows) means it has to be explicitly added
+// to the .def file
 extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
 {
 	static XLOPER12 xResult;
