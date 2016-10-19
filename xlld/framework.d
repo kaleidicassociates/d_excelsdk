@@ -637,7 +637,7 @@ LPXLOPER TempStrConst(const LPSTR lpstr)
    for TempStr to better understand this design decision.
 */
 
-LPXLOPER12[] TempStr12(wstring[] strings)
+LPXLOPER12[] TempStr12(in wstring[] strings)
 {
   LPXLOPER12[] ret;
   ret.length=strings.length;

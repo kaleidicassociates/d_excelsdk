@@ -7,8 +7,15 @@
 */
 
 import xlld;
-import myxll;
 import core.sys.windows.windows;
+
+__gshared HANDLE g_hInst = null;
+
+// this function must be define in a module compiled with
+// the current module
+// It's extern(C) so that it can be defined in any module
+extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow;
+
 
 extern(Windows)
 {
@@ -26,10 +33,6 @@ extern(Windows)
 	pragma(lib, "odbc32");
 	pragma(lib, "xlcall32d");
 }
-
-// Global Variables
-__gshared HANDLE g_hInst = null;
-
 
 extern(Windows) BOOL DllMain( HANDLE hDLL, DWORD dwReason, LPVOID lpReserved )
 {
@@ -65,23 +68,17 @@ extern(Windows) BOOL DllMain( HANDLE hDLL, DWORD dwReason, LPVOID lpReserved )
 extern(Windows) int xlAutoOpen()
 {
 	import std.conv;
+        import std.algorithm: map;
 	import core.runtime:rt_init;
-	rt_init();
-	static XLOPER12 xDLL; 	   // name of this DLL //
 
-	/**
-	   In the following block of code the name of the XLL is obtained by
-	   calling xlGetName. This name is used as the first argument to the
-	   REGISTER function to specify the name of the XLL. Next, the XLL loops
-	   through the g_rgWorksheetFuncs[] table, and the g_rgCommandFuncs[]
-	   tableregistering each function in the table using xlfRegister.
-	   Functions must be registered before you can add a menu item.
-	*/
+	rt_init(); // move to DllOpen?
 
-	Excel12f(xlGetName, &xDLL, []);
+        // get name of this XLL, needed to pass to xlfRegister
+	static XLOPER12 dllName;
+	Excel12f(xlGetName, &dllName, []);
 
-	foreach(row;g_rgWorksheetFuncs)
-		Excel12f(xlfRegister, cast(LPXLOPER12)0, [cast(LPXLOPER12) &xDLL] ~ TempStr12(row[]));
+	foreach(row; getWorksheetFunctions.map!(a => a.toStringArray))
+		Excel12f(xlfRegister, cast(LPXLOPER12)0, [cast(LPXLOPER12) &dllName] ~ TempStr12(row[]));
 
 	return 1;
 }

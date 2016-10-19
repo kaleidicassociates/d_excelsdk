@@ -64,30 +64,35 @@ extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
     return cast(LPXLOPER12) &xResult;
 }
 
-// for what these mean see:
-// https://msdn.microsoft.com/en-us/library/office/bb687900.aspx
-__gshared wstring[][] g_rgWorksheetFuncs =
-[
-    [ "FuncFib"w, //Procedure
-		"UU"w, //TypeText
-		"FuncFib"w, //FunctionText
-		"Compute to..."w, //ArgumentText
-		"1"w, //MacroType
-		"MyXLL"w, //Category
-		""w, //ShortcutText
-		""w, //HelpTopic
-		"Number to compute to"w // FunctionHelp
-		"Computes the nth fibonacci number"w, //ArgumentHelp1
-	],
-	[ "FuncMulByTwo"w,
-		"BB"w,
-		"FuncMulByTwo"w,
-		"Multiply By two"w,
-		"1"w,
-		"MyXLL"w,
-		""w,
-		""w,
-		"Number to multiply"w
-		"Multiplies by 2"w,
-	],
-];
+extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {
+
+    WorksheetFunction funcFib =
+    {
+      procedure: "FuncFib"w,
+      typeText: "UU"w,
+      functionText: "FuncFib"w,
+      argumentText: "Compute to..."w,
+      macroType: "1"w,
+      category: "MyXLL"w,
+      shortcutText: ""w,
+      helpTopic: ""w,
+      functionHelp: "Number to compute to"w,
+      argumentHelp: ["Computes the nth fibonacci number"w],
+    };
+
+    WorksheetFunction funcMulByTwo =
+    {
+      procedure: "FuncMulByTwo"w,
+      typeText: "BB"w,
+      functionText: "FuncMulByTwo"w,
+      argumentText: "The number to multiply by two"w,
+      macroType: "1"w,
+      category: "MyXLL"w,
+      shortcutText: ""w,
+      helpTopic: ""w,
+      functionHelp: "Number to multiply"w,
+      argumentHelp: ["Argument to multiplication by two"w],
+    };
+
+    return [funcFib, funcMulByTwo];
+}
