@@ -2,8 +2,10 @@
 	Code from generic.h and generic.d
 	Ported to the D Programming Language by Laeeth Isharc (2015)
 	This module provides the ceremony that must be done for every
-	XLL. As long as `myxll` provides the global g_rgWorksheetFuncs
-	with the functions to register, things should work.
+	XLL.
+	At least one module must be linked to this one implementing the
+	getWorkSheetFunctions function so that they can be registered
+	with Excel.
 */
 
 import xlld;
