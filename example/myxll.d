@@ -18,9 +18,11 @@ extern(C) export double FuncMulByTwo(double n) {
     return n * 2;
 }
 
-// extern(C) export means it doesn't have to be explicitly
-// added to the .def file
-extern(C) export LPXLOPER12 FuncFib (LPXLOPER12 n)
+// extern(Windows) means it has to be explicitly added
+// to the .def file
+// Because of that and the only double -> double reflection functionality,
+// it won't appear in Excel
+extern(Windows) LPXLOPER12 FuncFib (LPXLOPER12 n)
 {
 	static XLOPER12 xResult;
 	XLOPER12 xlt;
