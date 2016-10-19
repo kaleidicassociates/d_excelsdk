@@ -1,8 +1,7 @@
 /**
 	Code from generic.h and generic.d
 	Ported to the D Programming Language by Laeeth Isharc (2015)
-	This module provides the ceremony that must be done for every
-	XLL.
+	This module provides the ceremony that must be done for every XLL.
 	At least one module must be linked to this one implementing the
 	getWorkSheetFunctions function so that they can be registered
 	with Excel.
@@ -10,8 +9,6 @@
 
 import xlld;
 import core.sys.windows.windows;
-
-__gshared HANDLE g_hInst = null;
 
 // this function must be define in a module compiled with
 // the current module
@@ -45,9 +42,6 @@ extern(Windows) BOOL DllMain( HANDLE hDLL, DWORD dwReason, LPVOID lpReserved )
 	{
 	case DLL_PROCESS_ATTACH:
 		Runtime.initialize();
-		// The instance handle passed into DllMain is saved
-		// in the global variable g_hInst for later use.
-		g_hInst = hDLL;
 		dll_process_attach( hDLL, true );
 		break;
 	case DLL_PROCESS_DETACH:
@@ -79,8 +73,8 @@ extern(Windows) int xlAutoOpen()
 	static XLOPER12 dllName;
 	Excel12f(xlGetName, &dllName, []);
 
-	foreach(row; getWorksheetFunctions.map!(a => a.toStringArray))
-		Excel12f(xlfRegister, cast(LPXLOPER12)0, [cast(LPXLOPER12) &dllName] ~ TempStr12(row[]));
+	foreach(functionParams; getWorksheetFunctions.map!(a => a.toStringArray))
+		Excel12f(xlfRegister, cast(LPXLOPER12)0, [cast(LPXLOPER12) &dllName] ~ TempStr12(functionParams[]));
 
 	return 1;
 }
