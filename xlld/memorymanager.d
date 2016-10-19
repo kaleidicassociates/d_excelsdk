@@ -1,6 +1,3 @@
-module memorymanager;
-__gshared void* vpmm;
-
 /**
 	MemoryManager.D
 
@@ -12,7 +9,7 @@ __gshared void* vpmm;
 //              in the previous release of the framework.  This class provides
 //              each thread with an array of bytes to use as temporary memory.
 //              The size of the array, and the methods for dealing with the
-//              memory explicitly, is in the class MemoryPool.  
+//              memory explicitly, is in the class MemoryPool.
 //
 //              MemoryManager handles assigning of threads to pools, and the
 //              creation of new pools when a thread asks for memory the first
@@ -21,11 +18,15 @@ __gshared void* vpmm;
 //              as MEMORYPOOLS, defined in MemoryManager.h.  When a new thread
 //              needs a pool, and the current set of pools are all assigned,
 //              the number of pools increases by a factor of two.
-// 
+//
 // Platform:    Microsoft Windows
 //
 ///***************************************************************************
 */
+module xlld.memorymanager;
+
+__gshared void* vpmm;
+
 
 //
 // Total number of memory allocation pools to manage
@@ -41,9 +42,7 @@ version (Windows) {
 		return cast(uint)Thread.getThis().id;
 	}
 }
-//import xlcall;
-//import xlcallcpp;
-import memorypool;
+import xlld.memorypool;
 
 enum MEMORYPOOLS=4;
 
@@ -67,7 +66,7 @@ struct MemoryManager
 		return cast(MemoryManager*)vpmm;
 	}
 
-	
+
 	//
 	// Destructor.  Because of the way memory pools get copied,
 	// this function needs to call an additional function to clear
@@ -135,7 +134,7 @@ struct MemoryManager
 	private MemoryPool* GetMemoryPool(uint dwThreadID)
 	{
 		int imp; //loop var
-		
+
 		foreach(i,pmp;m_rgmp)
 		{
 			if (pmp.m_dwOwner == dwThreadID)

@@ -1,5 +1,3 @@
-module memorypool;
-
 /**
 MemoryPool.d - port of MemoryPool.cpp and MemoryPool.h by Laeeth Isharc
 //
@@ -17,11 +15,13 @@ MemoryPool.d - port of MemoryPool.cpp and MemoryPool.h by Laeeth Isharc
 //              pointer is set back to the beginning of the array.
 //
 //              Each pool has MEMORYSIZE bytes of storage space available to it
-// 
+//
 // Platform:    Microsoft Windows
 //
 ///***************************************************************************
 */
+module xlld.memorypool;
+
 import core.sys.windows.windows;
 
 //

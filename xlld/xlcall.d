@@ -15,6 +15,8 @@
 
   	Ported to the D Programming Language by Laeeth Isharc (2015)
 */
+module xlld.xlcall;
+
 import core.sys.windows.windows;
 
 /**

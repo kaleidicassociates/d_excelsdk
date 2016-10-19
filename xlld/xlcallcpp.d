@@ -10,11 +10,12 @@
     which are used in the Microsoft Excel C API.
 
 */
+module xlld.xlcallcpp;
 
 // import windows.h
 //import std.c.windows.windows;
 import core.sys.windows.windows;
-import xlcall;
+import xlld.xlcall;
 import core.vararg;
 
 /**
