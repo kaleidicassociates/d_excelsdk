@@ -5,5 +5,3 @@ CODE            PRELOAD DISCARDABLE
 DATA            PRELOAD MULTIPLE
 EXPORTS
                 xlAutoOpen
-                FuncFib
-                FuncMulByTwo

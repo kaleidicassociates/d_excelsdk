@@ -8,7 +8,7 @@
  -----------
  import xlld;
 
- mixin implGetWorksheetFunctions!("module1", "module2", "module3");
+ mixin(implGetWorksheetFunctionsString!("module1", "module2", "module3"));
  -----------
 
  All eligible functions in the 3 example modules above will automagically
@@ -83,8 +83,7 @@ private template isExcelFunction(alias T) {
  Gets all Excel-callable functions in a given module
  */
 WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
-    import std.traits: fullyQualifiedName;
-    mixin(`import ` ~ fullyQualifiedName!(mixin(moduleName)) ~ `;`);
+    mixin(`import ` ~ moduleName ~ `;`);
     alias module_ = Identity!(mixin(moduleName));
 
     WorksheetFunction[] ret;
@@ -125,11 +124,22 @@ WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeStri
 /**
  Implements the getWorksheetFunctions function needed by xlld.xll in
  order to register the Excel-callable functions at runtime
+ This used to be a template mixin but even using a string mixin inside
+ fails to actually make it an extern(C) function.
  */
-mixin template implGetWorksheetFunctions(Modules...) if(allSatisfy!(isSomeString, typeof(Modules))) {
-    extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {
-        return getAllExcelFunctions!Modules;
+string implGetWorksheetFunctionsString(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
+
+    string modulesString() {
+        import std.array: join;
+
+        string[] modules;
+        foreach(module_; Modules) {
+            modules ~= `"` ~ module_ ~ `"`;
+        }
+        return modules.join(", ");
     }
+
+    return `extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow { return getAllExcelFunctions!(` ~ modulesString ~ `); }`;
 }
 
 @("template mixin for getWorkSheetFunctions for test_module")
@@ -138,6 +148,6 @@ unittest {
     import xlld.worksheet;
 
     // mixin the function here then call it to see if it does what it's supposed to
-    mixin implGetWorksheetFunctions!"xlld.test_module";
+    mixin(implGetWorksheetFunctionsString!"xlld.test_module");
     getWorksheetFunctions.shouldEqual([doubleToDoubleFunction("FuncMulByTwo")]);
 }
