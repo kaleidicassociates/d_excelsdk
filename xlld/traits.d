@@ -1,11 +1,30 @@
+/**
+ This module implements the compile-time reflection machinery to
+ automatically register all D functions that are eligible in a
+ compile-time define list of modules to be called from Excel.
+
+ Import this module from any module from your XLL build and:
+
+ -----------
+ import xlld;
+
+ mixin implGetWorksheetFunctions!("module1", "module2", "module3");
+ -----------
+
+ All eligible functions in the 3 example modules above will automagically
+ be accessible from Excel (assuming the built XLL is loaded as an add-in).
+ */
 module xlld.traits;
 
 import xlld.worksheet;
 import std.traits: isSomeFunction, allSatisfy, isSomeString;
 
+// import unit_threaded and introduce helper functions for testing
 version(unittest) {
     import unit_threaded;
 
+    // return a WorksheetFunction for a double function(double) with no
+    // optional arguments
     WorksheetFunction doubleToDoubleFunction(wstring name) @safe pure nothrow {
         WorksheetFunction func = {
           procedure: name,
@@ -24,6 +43,10 @@ version(unittest) {
     }
 }
 
+/**
+ Take a D function as a compile-time parameter and returns a
+ WorksheetFunction struct with the fields filled in accordingly.
+ */
 WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     WorksheetFunction ret;
     ret.procedure = ret.functionText = __traits(identifier, F);
@@ -41,8 +64,10 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     getWorksheetFunction!bar.shouldEqual(doubleToDoubleFunction("bar"));
 }
 
+// helper template for aliasing
 private alias Identity(alias T) = T;
 
+// whether or not this is a function that can be called from Excel
 private template isExcelFunction(alias T) {
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
@@ -54,6 +79,9 @@ private template isExcelFunction(alias T) {
         enum isExcelFunction = false;
 }
 
+/**
+ Gets all Excel-callable functions in a given module
+ */
 WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
     import std.traits: fullyQualifiedName;
     mixin(`import ` ~ fullyQualifiedName!(mixin(moduleName)) ~ `;`);
@@ -81,8 +109,12 @@ WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
     );
 }
 
+/**
+ Gets all Excel-callable functions from the given modules
+ */
 WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
     WorksheetFunction[] ret;
+
     foreach(module_; Modules) {
         ret ~= getModuleExcelFunctions!module_;
     }
@@ -90,6 +122,10 @@ WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeStri
     return ret;
 }
 
+/**
+ Implements the getWorksheetFunctions function needed by xlld.xll in
+ order to register the Excel-callable functions at runtime
+ */
 mixin template implGetWorksheetFunctions(Modules...) if(allSatisfy!(isSomeString, typeof(Modules))) {
     extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {
         return getAllExcelFunctions!Modules;
