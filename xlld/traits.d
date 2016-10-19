@@ -43,6 +43,16 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 
 private alias Identity(alias T) = T;
 
+private template isExcelFunction(alias T) {
+    // trying to get a pointer to something is a good way of making sure we can
+    // attempt to evaluate `isSomeFunction` - it's not always possible
+    enum canGetPointerToIt = __traits(compiles, &T);
+
+    static if(canGetPointerToIt)
+        enum isExcelFunction = isSomeFunction!T;
+    else
+        enum isExcelFunction = false;
+}
 
 WorksheetFunction[] getExcelFunctions(string moduleName)() {
     import std.traits: fullyQualifiedName;
@@ -52,10 +62,11 @@ WorksheetFunction[] getExcelFunctions(string moduleName)() {
     WorksheetFunction[] ret;
 
     foreach(moduleMemberStr; __traits(allMembers, module_)) {
+
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
-        static if(isSomeFunction!moduleMember) {
+
+        static if(isExcelFunction!moduleMember)
             ret ~= getWorksheetFunction!moduleMember;
-        }
     }
 
     return ret;
