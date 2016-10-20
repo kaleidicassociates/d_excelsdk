@@ -17,17 +17,27 @@
 */
 module xlld.xlcall;
 
-import core.sys.windows.windows;
+version(Windows) {
+    import core.sys.windows.windows;
+    version (UNICODE) {
+        static assert(false, "Unicode not supported right now");
+    } else {
+        import core.sys.windows.winnt: LPSTR;
+    }
+} else version(unittest) {
+    alias HANDLE = int;
+    alias VOID = void;
+    alias HWND = int;
+    alias POINT = int;
+    alias LPSTR = void*;
+}
 
 /**
    XL 12 Basic Datatypes
  */
 extern(System) int Excel4v(int xlfn, LPXLOPER operRes, int count, LPXLOPER* opers); //pascal
 extern(C)int Excel4(int xlfn, LPXLOPER operRes, int count,... );  //_cdecl
-//extern(System)int Excel12(int xlfn, LPXLOPER12 operRes, int count,... ); //_cdecl
 
-extern(Windows)
-{
 	alias BYTE=ubyte;
 	alias WORD=ushort;
 	alias DWORD=uint;				// guess
@@ -136,13 +146,6 @@ extern(Windows)
 	   of any type. Use "R" as the argument type in the
 	   REGISTER function.
 	 */
-
-	version (UNICODE) {
-		static assert(false, "Unicode not supported right now");
-	} else {
-		import core.sys.windows.winnt: LPSTR;
-	}
-
 	struct XLOPER
 	{
 		union VAL
@@ -1500,4 +1503,3 @@ extern(Windows)
 	enum xlcOptionsSave=(753 | xlCommand);
 	enum xlcOptionsSpell=(755 | xlCommand);
 	enum xlcHideallInkannots=(808 | xlCommand);
-} // extern(Windows)

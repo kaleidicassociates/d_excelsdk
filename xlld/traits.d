@@ -17,6 +17,7 @@
 module xlld.traits;
 
 import xlld.worksheet;
+import xlld.xlcall;
 import std.traits: isSomeFunction, allSatisfy, isSomeString;
 
 // import unit_threaded and introduce helper functions for testing
@@ -79,6 +80,44 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
     double foo(int) { return 0; }
     getWorksheetFunction!foo.shouldThrowWithMessage("Unsupported function type double(int) for foo");
+}
+
+
+private wstring getTypeText(alias F)() if(isSomeFunction!F) {
+    import std.traits: ReturnType, Parameters;
+
+    wstring typeToString(T)() {
+        static if(is(T == double))
+            return "B";
+        else static if(is(T == FP12*))
+            return "K%";
+        else
+            static assert(false, "Unsupported type " ~ T.stringof);
+    }
+
+    wstring retType = typeToString!(ReturnType!F);
+    foreach(argType; Parameters!F)
+        retType ~= typeToString!(argType);
+
+    return retType;
+}
+
+
+@("getTypeText for doubles and FP12s")
+@safe pure unittest {
+    import std.conv: to; // working around unit-threaded bug
+
+    double foo(double);
+    getTypeText!foo.to!string.shouldEqual("BB");
+
+    double bar(FP12*);
+    getTypeText!bar.to!string.shouldEqual("BK%");
+
+    FP12* baz(FP12*);
+    getTypeText!baz.to!string.shouldEqual("K%K%");
+
+    FP12* qux(double);
+    getTypeText!qux.to!string.shouldEqual("K%B");
 }
 
 
