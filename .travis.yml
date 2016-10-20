@@ -1,0 +1,8 @@
+dist: trusty
+language: d
+sudo: false
+d: dmd
+script: make
+
+notifications:
+  slack: kaleidic:6grLjjD8iJiZxvnEnQhCvr48
