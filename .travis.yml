@@ -2,7 +2,7 @@ dist: trusty
 language: d
 sudo: false
 d: dmd
-script: make -j`grep -c '^process' /proc/cpuinfo`
+script: make
 
 notifications:
   slack: kaleidic:6grLjjD8iJiZxvnEnQhCvr48

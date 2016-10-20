@@ -5,20 +5,21 @@
 
 all: test
 
-LIB_UT=~/.dub/packages/unit-threaded-0.6.30/unit-threaded/libunit-threaded.a
-UT_FILES=$(addprefix ~/.dub/packages/unit-threaded-0.6.30/unit-threaded/source/unit_threaded/, asserts.d dub.d integration.d meta.d options.d reflection.d runtime.d testcase.d testsuite.d attrs.d factory.d io.d mock.d package.d runner.d should.d uda.d)
+UT_DIR=~/.dub/packages/unit-threaded-0.6.30/unit-threaded
+UT_LIB=$(UT_DIR)/libunit-threaded.a
+UT_SRC=$(UT_DIR)/dub.json
 
 test: bin/ut
 	$^
 
-bin/ut: bin/ut.o $(LIB_UT)
+bin/ut: $(UT_LIB) bin/ut.o
 	dmd -of$@ $^
 
 bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/test_module.d
-	dmd -c -of$@ -I~/.dub/packages/unit-threaded-0.6.30/unit-threaded/source -unittest -g -debug $^
+	dmd -c -of$@ -I$(UT_DIR)/source -unittest -g -debug $^
 
-$(LIB_UT): ~/.dub/packages/unit-threaded-0.6.30/unit-threaded/dub.json
+$(UT_LIB): $(UT_SRC)
 	cd $(dir $^); dub build
 
-~/.dub/packages/unit-threaded-0.6.30/unit-threaded/dub.json:
+$(UT_SRC):
 	dub fetch unit-threaded --version=0.6.30
