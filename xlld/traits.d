@@ -42,6 +42,24 @@ version(unittest) {
 
         return func;
     }
+
+    WorksheetFunction FP12ToDoubleFunction(wstring name) @safe pure nothrow {
+        WorksheetFunction func = {
+          procedure: name,
+          typeText: "BK%"w,
+          functionText: name,
+          argumentText: ""w,
+          macroType: "1"w,
+          category: ""w,
+          shortcutText: ""w,
+          helpTopic: ""w,
+          functionHelp: ""w,
+          argumentHelp: [],
+        };
+
+        return func;
+    }
+
 }
 
 /**
@@ -61,7 +79,7 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 
         WorksheetFunction ret;
         ret.procedure = ret.functionText = __traits(identifier, F);
-        ret.typeText = "BB"w;
+        ret.typeText = getTypeText!F;
         ret.macroType = "1"w;
         return ret;
     }
@@ -127,14 +145,18 @@ private alias Identity(alias T) = T;
 // whether or not this is a function that can be called from Excel
 private template isWorksheetFunction(alias T) {
     import std.traits: ReturnType, Parameters;
-    import std.meta: AliasSeq;
+    import std.meta: AliasSeq, allSatisfy;
 
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
     enum canGetPointerToIt = __traits(compiles, &T);
+    enum isSupportedType(U) = is(U == double) || is(U == FP12*);
 
     static if(canGetPointerToIt)
-        enum isWorksheetFunction = isSomeFunction!T && is(ReturnType!T == double) && is(Parameters!T == AliasSeq!double);
+        enum isWorksheetFunction =
+            isSomeFunction!T &&
+            isSupportedType!(ReturnType!T) &&
+            allSatisfy!(isSupportedType, Parameters!T);
     else
         enum isWorksheetFunction = false;
 }
@@ -168,6 +190,7 @@ WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
     getModuleWorksheetFunctions!"xlld.test_module".shouldEqual(
         [
             doubleToDoubleFunction("FuncMulByTwo"),
+            FP12ToDoubleFunction("FuncFP12"),
         ]
     );
 }
@@ -218,5 +241,10 @@ unittest {
 
     // mixin the function here then call it to see if it does what it's supposed to
     mixin(implGetWorksheetFunctionsString!"xlld.test_module");
-    getWorksheetFunctions.shouldEqual([doubleToDoubleFunction("FuncMulByTwo")]);
+    getWorksheetFunctions.shouldEqual(
+        [
+            doubleToDoubleFunction("FuncMulByTwo"),
+            FP12ToDoubleFunction("FuncFP12"),
+        ]
+    );
 }
