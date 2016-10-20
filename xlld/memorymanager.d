@@ -9,7 +9,7 @@
 //              in the previous release of the framework.  This class provides
 //              each thread with an array of bytes to use as temporary memory.
 //              The size of the array, and the methods for dealing with the
-//              memory explicitly, is in the class MemoryPool.  
+//              memory explicitly, is in the class MemoryPool.
 //
 //              MemoryManager handles assigning of threads to pools, and the
 //              creation of new pools when a thread asks for memory the first
@@ -18,20 +18,31 @@
 //              as MEMORYPOOLS, defined in MemoryManager.h.  When a new thread
 //              needs a pool, and the current set of pools are all assigned,
 //              the number of pools increases by a factor of two.
-// 
+//
 // Platform:    Microsoft Windows
 //
 ///***************************************************************************
 */
+module xlld.memorymanager;
+
+__gshared void* vpmm;
+
 
 //
 // Total number of memory allocation pools to manage
 //
+
 import core.sys.windows.windows;
-//import std.c.windows.windows;
-import xlcall;
-import xlcallcpp;
-import memorypool;
+version (Windows) {
+	@nogc nothrow extern(Windows) uint GetCurrentThreadId();
+} else {
+//	import core.sys.posix.posix;
+	uint GetCurrentThreadId() {
+		import core.thread;
+		return cast(uint)Thread.getThis().id;
+	}
+}
+import xlld.memorypool;
 
 enum MEMORYPOOLS=4;
 
@@ -40,7 +51,7 @@ struct MemoryManager
 	private int m_impCur=0;		// Current number of pools
 	private int m_impMax=MEMORYPOOLS;		// Max number of mem pools
 	static private MemoryPool[] m_rgmp;	// Storage for the memory pools
-
+//extern(C++) :
 
 	//
 	// Returns the singleton class, or creates one if it doesn't exit
@@ -52,10 +63,10 @@ struct MemoryManager
 			vpmm = new MemoryManager();
 			this.m_rgmp.length=MEMORYPOOLS;
 		}
-		return vpmm;
+		return cast(MemoryManager*)vpmm;
 	}
 
-	
+
 	//
 	// Destructor.  Because of the way memory pools get copied,
 	// this function needs to call an additional function to clear
@@ -81,7 +92,7 @@ struct MemoryManager
 	ubyte* CPP_GetTempMemory(size_t cByte)
 	//LPSTR CPP_GetTempMemory(size_t cByte)
 	{
-		DWORD dwThreadID;
+		uint dwThreadID;
 		MemoryPool* pmp;
 
 		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
@@ -101,7 +112,7 @@ struct MemoryManager
 	//
 	void CPP_FreeAllTempMemory()
 	{
-		DWORD dwThreadID;
+		uint dwThreadID;
 		MemoryPool* pmp;
 
 		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
@@ -120,10 +131,10 @@ struct MemoryManager
 	// the pool that matches the given thread ID. If a pool is not found,
 	// it creates a new one
 	//
-	private MemoryPool* GetMemoryPool(DWORD dwThreadID)
+	private MemoryPool* GetMemoryPool(uint dwThreadID)
 	{
 		int imp; //loop var
-		
+
 		foreach(i,pmp;m_rgmp)
 		{
 			if (pmp.m_dwOwner == dwThreadID)
@@ -139,7 +150,7 @@ struct MemoryManager
 	// Will assign an unused pool to a thread; should all pools be assigned,
 	// it will grow the number of pools available.
 	//
-	private MemoryPool* CreateNewPool(DWORD dwThreadID)
+	private MemoryPool* CreateNewPool(uint dwThreadID)
 	{
 		if (m_impCur >= m_impMax)
 		{
@@ -190,8 +201,7 @@ struct MemoryManager
 //
 // Singleton instance of the class
 //
-__gshared MemoryManager* vpmm;
-
+extern (C++) :
 //
 // Interface for C callers to ask for memory
 //
@@ -211,4 +221,8 @@ ubyte* MGetTempMemory(size_t cByte)
 void MFreeAllTempMemory()
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+}
+
+void* GetTempMemory(size_t size) {
+	return MGetTempMemory(size);
 }

@@ -19,6 +19,10 @@ string[] fields=[
     "XllDisableFunctionWizard!","XllDisableReplaceCalc!"
     ];
 
+struct ExcelWrap {
+	string newname;
+}
+
 void main(string[] args)
 {
 	foreach(s;fields)

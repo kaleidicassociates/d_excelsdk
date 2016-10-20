@@ -10,34 +10,34 @@
        creating temporary XLOPER12s, robustly calling
        Excel12(), and outputting debugging strings
        to the debugger for the current application.
-     
+
        The main purpose of this library is to help
        you to write cleaner C code for calling Excel.
        For example, using the framework library you
        can write
-     
+
            Excel12f(xlcDisplay, 0, 2, TempMissing12(), TempBool12(0));
-     
+
        instead of the more verbose
-     
+
            XLOPER12 xMissing, bool_;
            xMissing.xltype = xltypeMissing;
            bool_.xltype = xltypeBool;
            bool_.val.bool_ = 0;
            Excel12(xlcDisplay, 0, 2, (LPXLOPER12) &xMissing, (LPXLOPER12) &bool_);
-     
-     
+
+
        The library is non-reentrant.
-     
+
        Define _DEBUG to use the debugging functions.
-     
+
        Source code is provided so that you may
        enhance this library or optimize it for your
        own application.
-   
+
    Platform:    Microsoft Windows
 
-   Functions:		
+   Functions:
                 debugPrintf
                 GetTempMemory
                 FreeAllTempMemory
@@ -68,22 +68,24 @@
 				QuitFramework
 
 */
+module xlld.framework;
+
 debug=0;
 
 import core.sys.windows.windows;
 //import std.c.windows.windows;
-import xlcall;
-import xlcallcpp;
+import xlld.xlcall;
+import xlld.xlcallcpp;
 import core.stdc.string;
 import core.stdc.stdlib:malloc,free;
-import memorymanager;
-import memorypool;
+import xlld.memorymanager;
+import xlld.memorypool;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
 enum cchMaxStz=255;
 enum MAXSHORTINT =0x7fff;
-enum CP_ACP = 0; 
+enum CP_ACP = 0;
 enum MAXWORD = 0xFFFF;
 // malloc wchar framewrk memorymanager stdarg
 
@@ -92,19 +94,19 @@ static if(false) // debug
 
 	/**
 	   debugPrintf()
-	
-	   Purpose: 
-	        sends a string to the debugger for the current application. 
-	
+
+	   Purpose:
+	        sends a string to the debugger for the current application.
+
 	   Parameters:
-	
+
 	        LPSTR lpFormat  The format definition string
 	        ...             The values to print
-	
-	   Returns: 
-	
+
+	   Returns:
+
 	   Comments:
-	
+
 	*/
 
 	void  debugPrintf(LPSTR lpFormat, ...) // cdecl
@@ -121,29 +123,29 @@ static if(false) // debug
 
 /**
    GetTempMemory()
-  
-   Purpose: 
+
+   Purpose:
          Allocates temporary memory. Temporary memory
          can only be freed in one chunk, by calling
          FreeAllTempMemory(). This is done by Excel12f().
-  
+
    Parameters:
-  
+
         size_t cBytes      How many bytes to allocate
-  
-   Returns: 
-  
+
+   Returns:
+
         LPSTR           A pointer to the allocated memory,
                         or 0 if more memory cannot be
                         allocated. If this fails,
                         check that MEMORYSIZE is big enough
                         in MemoryPool.h and that you have
                         remembered to call FreeAllTempMemory
-  
+
    Comments:
-  
+
   	Algorithm:
-         
+
         The memory allocation algorithm is extremely
         simple: on each call, allocate the next cBytes
         bytes of a static memory buffer. If the buffer
@@ -158,13 +160,13 @@ static if(false) // debug
         assume you will not need more memory than
         the amount required to hold a few arguments
         to Excel12f().
-   
+
         Note that the memory allocation algorithm
         now supports multithreaded applications by
         giving each unique thread its own static
         block of memory. This is handled in the
         MemoryManager.cpp file automatically.
-  
+
 */
 //extern(Windows) LPSTR GetTempMemory(size_t cBytes)
 extern(Windows) ubyte* GetTempMemory(size_t cBytes)
@@ -174,19 +176,19 @@ extern(Windows) ubyte* GetTempMemory(size_t cBytes)
 
 /**
    FreeAllTempMemory()
-  
-   Purpose: 
-  
+
+   Purpose:
+
         Frees all temporary memory that has been allocated
         for the current thread
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
-  
+
+
 */
 
 extern(Windows) void FreeAllTempMemory()
@@ -196,11 +198,11 @@ extern(Windows) void FreeAllTempMemory()
 
 /**
    Excel()
-  
-   Purpose: 
+
+   Purpose:
         A fancy wrapper for the Excel4() function. It also
         does the following:
-          
+
         (1) Checks that none of the LPXLOPER arguments are 0,
             which would indicate that creating a temporary XLOPER
             has failed. In this case, it doesn't call Excel
@@ -208,29 +210,29 @@ extern(Windows) void FreeAllTempMemory()
         (2) If an error occurs while calling Excel,
             print a useful debug message.
         (3) When done, free all temporary memory.
-          
+
         #1 and #2 require _DEBUG to be defined.
-  
+
    Parameters:
-  
+
         int xlfn            Function number (xl...) to call
         LPXLOPER pxResult   Pointer to a place to stuff the result,
                             or 0 if you don't care about the result.
         int count           Number of arguments
         ...                 (all LPXLOPERs) - the arguments.
-  
-   Returns: 
-  
+
+   Returns:
+
         A return code (Some of the xlret... values, as defined
         in XLCALL.H, OR'ed together).
-  
+
    Comments:
 */
 
 int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 {
 	int xlret;
-	
+
 	xlret = Excel4v(xlfn,pxResult,cast(int)args.length,cast(LPXLOPER *)args.ptr);
 
 	static if(false) //debug
@@ -298,11 +300,11 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 
 /**
    Excel12f()
-  
-   Purpose: 
+
+   Purpose:
         A fancy wrapper for the Excel12() function. It also
         does the following:
-          
+
         (1) Checks that none of the LPXLOPER12 arguments are 0,
             which would indicate that creating a temporary XLOPER12
             has failed. In this case, it doesn't call Excel12
@@ -310,22 +312,22 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
         (2) If an error occurs while calling Excel12,
             print a useful debug message.
         (3) When done, free all temporary memory.
-          
+
         #1 and #2 require _DEBUG to be defined.
-  
+
    Parameters:
-  
+
         int xlfn            Function number (xl...) to call
         LPXLOPER12 pxResult Pointer to a place to stuff the result,
                             or 0 if you don't care about the result.
         int count           Number of arguments
         ...                 (all LPXLOPER12s) - the arguments.
-  
-   Returns: 
-  
+
+   Returns:
+
         A return code (Some of the xlret... values, as defined
         in XLCALL.H, OR'ed together).
-  
+
    Comments:
 */
 
@@ -334,7 +336,7 @@ int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) // cdecl
 	int xlret;
 
 	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
-	
+
 	static if(false) //debug
 	{
 		if (xlret != xlretSuccess)
@@ -401,19 +403,19 @@ int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) // cdecl
 
 /**
    TempNum()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary numeric (IEEE floating point) XLOPER.
-  
+
    Parameters:
-  
+
         double d        The value
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -436,22 +438,22 @@ LPXLOPER TempNum(double d)
 
 /**
    TempNum12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary numeric (IEEE floating point) XLOPER12.
-  
+
    Parameters:
-  
+
         double d        The value
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  		
-  
+
+
 */
 
 LPXLOPER12 TempNum12(double d)
@@ -473,12 +475,12 @@ LPXLOPER12 TempNum12(double d)
 
 /**
    TempStr()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary string XLOPER
-  
+
    Parameters:
-  
+
         LPSTR lpstr     The string, as a null-terminated
                         C string, with the first byte
                         undefined. This function will
@@ -487,37 +489,37 @@ LPXLOPER12 TempNum12(double d)
                         first byte of lpstr. Excel cannot
                         handle strings longer than 255
                         characters.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         (1) This function has the side effect of inserting
             the byte count as the first character of
             the created string.
-  
+
         (2) For highest speed, with constant strings,
             you may want to manually count the length of
             the string before compiling, and then avoid
             using this function.
-  
+
         (3) Behavior is undefined for non-null terminated
             input or strings longer than 255 characters.
-  
+
    Note: If lpstr passed into TempStr is readonly, TempStr
    will crash your XLL as it will try to modify a read only
    string in place. strings declared on the stack as described below
    are read only by default in VC++
-  
+
    char *str = " I am a string"
-  
+
    Use extreme caution while calling TempStr on such strings. Refer to
    VC++ documentation for complier options to ensure that these strings
    are compiled as read write or use TempStrConst instead.
-  
+
    TempStr is provided mainly for backwards compatability and use of
    TempStrConst is encouraged going forward.
 */
@@ -543,13 +545,13 @@ LPXLOPER TempStr(LPSTR lpstr)
 
 /**
    TempStrConst()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary string XLOPER from a
         const string with a local copy in temp memory
-  
+
    Parameters:
-  
+
         LPSTR lpstr     The string, as a null-terminated
                         C string. This function will
                         count the bytes of the string
@@ -557,17 +559,17 @@ LPXLOPER TempStr(LPSTR lpstr)
                         first byte of the temp string.
                         Excel cannot handle strings
                         longer than 255 characters.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Will take a string of the form "abc\0" and make a
         temp XLOPER of the form "\003abc"
-  
+
 */
 
 LPXLOPER TempStrConst(const LPSTR lpstr)
@@ -598,44 +600,44 @@ LPXLOPER TempStrConst(const LPSTR lpstr)
 
 /**
    TempStr12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary string XLOPER12 from a
         unicode const string with a local copy in
         temp memory
-  
+
    Parameters:
-  
+
         wchar lpstr     The string, as a null-terminated
                         unicode string. This function will
                         count the bytes of the string
                         and insert that count in the
                         first byte of the temp string.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         (1) Fix for const string pointers being passed in to TempStr.
             Note it assumes NO leading space
-  
+
         (2) Also note that XLOPER12 now uses unicode for the string
             operators
-  
+
         (3) Will remove the null-termination on the string
-  
-  
-  
+
+
+
    Note: TempStr12 is different from TempStr and is more like TempStrConst
    in its behavior. We have consciously made this choice and deprecated the
    behavior of TempStr going forward. Refer to the note in comment section
    for TempStr to better understand this design decision.
 */
 
-LPXLOPER12[] TempStr12(wstring[] strings)
+LPXLOPER12[] TempStr12(in wstring[] strings)
 {
   LPXLOPER12[] ret;
   ret.length=strings.length;
@@ -708,20 +710,20 @@ LPXLOPER12 TempStr12(const(wchar*) lpstr)
 
 /**
    TempBool()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary logical (true/false) XLOPER.
-  
+
    Parameters:
-  
+
         int b           0 - for a false XLOPER
                         Anything else - for a true XLOPER
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -743,20 +745,20 @@ LPXLOPER TempBool(int b)
 
 /**
    TempBool12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary logical (true/false) XLOPER12.
-  
+
    Parameters:
-  
+
         BOOL b          0 - for a false XLOPER12
                         Anything else - for a true XLOPER12
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -779,19 +781,19 @@ LPXLOPER12 TempBool12(BOOL b)
 
 /**
    TempInt()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary integer XLOPER.
-  
+
    Parameters:
-  
+
         short int i     The integer
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -814,21 +816,21 @@ LPXLOPER TempInt(short i)
 
 /**
    TempInt12()
-  
-   Purpose: 
+
+   Purpose:
             Creates a temporary integer XLOPER12.
-  
+
    Parameters:
-  
+
         int i           The integer
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Note that the int oper has increased in size from
         short int up to int in the 12 opers
 */
@@ -852,23 +854,23 @@ LPXLOPER12 TempInt12(int i)
 
 /**
    TempErr()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary error XLOPER.
-  
+
    Parameters:
-  
+
         WORD err        The error code. One of the xlerr...
                         constants, as defined in XLCALL.H.
                         See the Excel user manual for
                         descriptions about the interpretation
                         of various error codes.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -891,25 +893,25 @@ LPXLOPER TempErr(WORD err)
 
 /**
    TempErr12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary error XLOPER12.
-  
+
    Parameters:
-  
+
         int err         The error code. One of the xlerr...
                         constants, as defined in XLCALL.H.
                         See the Excel user manual for
                         descriptions about the interpretation
                         of various error codes.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Note the paramater has changed from a WORD to an int
         in the new 12 operators
 */
@@ -933,25 +935,25 @@ LPXLOPER12 TempErr12(int err)
 
 /**
    TempActiveRef()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary rectangular reference to the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         WORD rwFirst    (0 based) The first row in the rectangle.
         WORD rwLast     (0 based) The last row in the rectangle.
         BYTE colFirst   (0 based) The first column in the rectangle.
         BYTE colLast    (0 based) The last column in the rectangle.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -994,29 +996,29 @@ LPXLOPER TempActiveRef(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
 
 /**
    TempActiveRef12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary rectangular reference to the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         RW rwFirst      (0 based) The first row in the rectangle.
         RW rwLast       (0 based) The last row in the rectangle.
         COL colFirst    (0 based) The first column in the rectangle.
         COL colLast     (0 based) The last column in the rectangle.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Note that the formal parameters have changed for Excel 2007
-        The valid size has increased to accomodate the increase 
+        The valid size has increased to accomodate the increase
         in Excel 2007 workbook sizes
 */
 
@@ -1057,23 +1059,23 @@ LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
 
 /**
    TempActiveCell()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to a single cell on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         WORD rw         (0 based) The row of the cell.
         BYTE col        (0 based) The column of the cell.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -1084,25 +1086,25 @@ LPXLOPER TempActiveCell(WORD rw, BYTE col)
 
 /**
    TempActiveCell12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to a single cell on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         RW rw           (0 based) The row of the cell.
         COL col         (0 based) The column of the cell.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Paramter types changed to RW and COL to accomodate the increase
         in sheet sizes introduced in Excel 2007
 */
@@ -1114,22 +1116,22 @@ LPXLOPER12 TempActiveCell12(RW rw, COL col)
 
 /**
    TempActiveRow()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to an entire row on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         RW rw           (0 based) The row.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 */
 
@@ -1140,24 +1142,24 @@ LPXLOPER TempActiveRow(WORD rw)
 
 /**
    TempActiveRow12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to an entire row on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         RW rw           (0 based) The row.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Paramter type change to RW to accomodate the increase in sheet
         sizes introduced in Excel 2007
 */
@@ -1169,23 +1171,23 @@ LPXLOPER12 TempActiveRow12(RW rw)
 
 /**
    TempActiveColumn()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to an entire column on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         LPSTR s         First string
         LPSTR t         Second string
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
 
 */
@@ -1197,24 +1199,24 @@ LPXLOPER TempActiveColumn(BYTE col)
 
 /**
    TempActiveColumn12()
-  
-   Purpose: 
+
+   Purpose:
         Creates a temporary reference to an entire column on the active
         sheet. Remember that the active sheet is the sheet that
         the user sees in front, not the sheet that is currently
         being calculated.
-  
+
    Parameters:
-  
+
         COL col	        (0 based) The column.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
         Paramter type change to COL to accomodate the increase in sheet
         sizes introduced in Excel 2007
 
@@ -1228,21 +1230,21 @@ LPXLOPER12 TempActiveColumn12(COL col)
 
 /**
    TempMissing()
-  
-   Purpose: 
+
+   Purpose:
         This is used to simulate a missing argument when
         calling Excel(). It creates a temporary
         "missing" XLOPER.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER        The temporary XLOPER, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
 */
 
 LPXLOPER TempMissing()
@@ -1263,21 +1265,21 @@ LPXLOPER TempMissing()
 
 /**
    TempMissing12()
-  
-   Purpose: 
+
+   Purpose:
         This is used to simulate a missing argument when
         calling Excel12f(). It creates a temporary
         "missing" XLOPER12.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The temporary XLOPER12, or 0
                         if GetTempMemory() failed.
-  
+
    Comments:
-  
+
 */
 
 LPXLOPER12 TempMissing12()
@@ -1298,16 +1300,16 @@ LPXLOPER12 TempMissing12()
 
 /**
    InitFramework()
-  
-   Purpose: 
+
+   Purpose:
         Initializes all the framework functions.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
+
 */
 
 void InitFramework()
@@ -1317,16 +1319,16 @@ void InitFramework()
 
 /**
    QuitFramework()
-  
-   Purpose: 
+
+   Purpose:
         Cleans up for all framework functions.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
+
 */
 void QuitFramework()
 {
@@ -1335,20 +1337,20 @@ void QuitFramework()
 
 /**
    FreeXLOperT()
-  
-   Purpose: 
+
+   Purpose:
         Will free any malloc'd memory associated with the given
         LPXLOPER, assuming it has any memory associated with it
-  
+
    Parameters:
-  
+
         LPXLOPER pxloper    Pointer to the XLOPER whose associated
                             memory we want to free
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
+
 */
 
 void FreeXLOperT(LPXLOPER pxloper)
@@ -1387,7 +1389,7 @@ void FreeXLOperT(LPXLOPER pxloper)
   		if (pxloper.val.bigdata.h.lpbData !is null)
   			free(pxloper.val.bigdata.h.lpbData);
   		break;
-  	
+
     default: // todo: add error handling
       break;
     }
@@ -1396,18 +1398,18 @@ void FreeXLOperT(LPXLOPER pxloper)
 
 /**
    FreeXLOper12T()
-  
-   Purpose: 
+
+   Purpose:
         Will free any malloc'd memory associated with the given
         LPXLOPER12, assuming it has any memory associated with it
-  
+
    Parameters:
-  
+
         LPXLOPER12 pxloper12    Pointer to the XLOPER12 whose
            	                    associated memory we want to free
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
 
 */
@@ -1449,7 +1451,7 @@ void FreeXLOper12T(LPXLOPER12 pxloper12)
   		if (pxloper12.val.bigdata.h.lpbData !is null)
   			free(pxloper12.val.bigdata.h.lpbData);
   		break;
-  	
+
     default: // todo: add error handling
       break;
   }
@@ -1458,21 +1460,21 @@ void FreeXLOper12T(LPXLOPER12 pxloper12)
 
 /**
    ConvertXLRefToXLRef12()
-  
-   Purpose: 
+
+   Purpose:
         Will attempt to convert an XLREF into the given XREF12
-  
+
    Parameters:
-  
+
         LPXLREF pxref       Pointer to the XLREF to copy
         LPXLREF12 pxref12   Pointer to the XLREF12 to copy into
-  
-   Returns: 
-  
+
+   Returns:
+
         BOOL                true if the conversion succeeded, false otherwise
-  
+
    Comments:
-  
+
 */
 
 
@@ -1494,21 +1496,21 @@ BOOL ConvertXLRefToXLRef12(LPXLREF pxref, LPXLREF12 pxref12)
 
 /**
    ConvertXLRef12ToXLRef()
-  
-   Purpose: 
+
+   Purpose:
         Will attempt to convert an XLREF12 into the given XLREF
-  
+
    Parameters:
-  
+
         LPXLREF12 pxref12   Pointer to the XLREF12 to copy
         LPXLREF pxref       Pointer to the XLREF to copy into
-  
-   Returns: 
-  
+
+   Returns:
+
         BOOL                true if the conversion succeeded, false otherwise
-  
+
    Comments:
-  
+
 */
 
 BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
@@ -1532,26 +1534,26 @@ BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
 
 /**
    XLOper12ToXLOper()
-  
-   Purpose: 
+
+   Purpose:
         Conversion routine used to convert from the new XLOPER12
         to the old XLOPER.
-  
+
    Parameters:
-  
+
         LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy
         LPXLOPER pxloper        Pointer to the XLOPER to copy into
-  
-   Returns: 
-  
+
+   Returns:
+
         BOOL                    true if the conversion succeeded, false otherwise
-  
+
    Comments:
-  
+
         - The caller is responsible for freeing any memory associated with
           the copy if the conversion is a success; FreeXOperT can be
           used, or it may be done by hand.
-  
+
         - If the conversion fails, any memory the method needed to malloc
           up until the point of failure in the conversion will be freed
           by the method itself during cleanup.
@@ -1808,26 +1810,26 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 
 /**
    XLOperToXLOper12()
-  
-   Purpose: 
+
+   Purpose:
         Conversion routine used to convert from the old XLOPER
         to the new XLOPER12.
-  
+
    Parameters:
-  
+
         LPXLOPER pxloper        Pointer to the XLOPER to copy
         LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy into
-  
-   Returns: 
-  
+
+   Returns:
+
         BOOL                    true if the conversion succeeded, false otherwise
-  
+
    Comments:
-  
+
         - The caller is responsible for freeing any memory associated with
           the copy if the conversion is a success; FreeXLOper12T can be
           used, or it may be done by hand.
-  
+
         - If the conversion fails, any memory the method needed to malloc
           up until the point of failure in the conversion will be freed
           by the method itself during cleanup.

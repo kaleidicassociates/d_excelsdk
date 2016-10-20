@@ -1,25 +1,26 @@
-/**  
+/**
     Microsoft Excel Developer's Toolkit
     Version 14.0
-  
+
     File:           SRC\XLCALL.CPP
     Description:    Code file for Excel callbacks
     Platform:       Microsoft Windows
-  
-    This file defines the entry points 
+
+    This file defines the entry points
     which are used in the Microsoft Excel C API.
-  
+
 */
+module xlld.xlcallcpp;
 
 // import windows.h
 //import std.c.windows.windows;
 import core.sys.windows.windows;
-import xlcall;
+import xlld.xlcall;
 import core.vararg;
 
 /**
    Excel 12 entry points backwards compatible with Excel 11
-  
+
    Excel12 and Excel12v ensure backwards compatibility with Excel 11
    and earlier versions. These functions will return xlretFailed when
    used to callback into Excel 11 and earlier versions
@@ -34,7 +35,7 @@ alias EXCEL12PROC=extern(Windows) int function (int xlfn, int coper, LPXLOPER12 
 HMODULE hmodule;
 EXCEL12PROC pexcel12;
 
-void FetchExcel12EntryPt() // __forceinline 
+void FetchExcel12EntryPt() // __forceinline
 {
 	if (pexcel12 is null)
 	{
@@ -43,17 +44,18 @@ void FetchExcel12EntryPt() // __forceinline
 		{
 			pexcel12 = cast(EXCEL12PROC) GetProcAddress(hmodule, EXCEL12ENTRYPT);
 		}
+		assert(pexcel12 !is null, "No entry point fetched");
 	}
 }
 
 /**
    This function explicitly sets EXCEL12ENTRYPT.
-  
+
    If the XLL is loaded not by Excel.exe, but by a HPC cluster container DLL,
    then GetModuleHandle(null) would return the process EXE module handle.
    In that case GetProcAddress would fail, since the process EXE doesn't
    export EXCEL12ENTRYPT ( since it's not Excel.exe).
-  
+
    First try to fetch the known good entry point,
    then set the passed in address.
 */
@@ -94,7 +96,7 @@ int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 		}
 	}
 	return(mdRet);
-	
+
 }
 
 //pascal

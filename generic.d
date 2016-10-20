@@ -8,49 +8,49 @@
 	File:				GENERIC.H
 
    Purpose:			Header file for Generic.c
-   
+
    Platform:    Microsoft Windows
-  
+
    Updated by Microsoft Product Support Services, Windows Developer Support.
    From the Microsoft Excel Developer's Kit, Version 14
    Copyright (c) 1996-2010 Microsoft Corporation. All rights reserved.
  */
 /**
    File:        GENERIC.C
-  
+
    Purpose:     Template for creating XLLs for Microsoft Excel.
-  
-                This file contains sample code you can use as 
-                a template for writing your own Microsoft Excel XLLs. 
+
+                This file contains sample code you can use as
+                a template for writing your own Microsoft Excel XLLs.
                 An XLL is a DLL that stands alone, that is, you
                 can open it by choosing the Open command from the
-                File menu. This code demonstrates many of the features 
+                File menu. This code demonstrates many of the features
                 of the Microsoft Excel C API.
-                
+
                 When you open GENERIC.XLL, it
                 creates a new Generic menu with four
                 commands:
-                
+
                     Dialog...          displays a Microsoft Excel dialog box
                     Dance              moves the selection around
                                        until you press ESC
                     Native Dialog...   displays a Windows dialog box
                     Exit               Closes GENERIC.XLL and
                                        removes the menu
-                
+
                 GENERIC.XLL also provides three functions,
                 Func1, FuncSum and FuncFib, which can be used whenever
-                GENERIC.XLL is open. 
-                
+                GENERIC.XLL is open.
+
                 GENERIC.XLL can also be added with the
                 Add-in Manager.
-                
+
                 This file uses the framework library
                 (FRMWRK32.LIB).
-   
+
    Platform:    Microsoft Windows
-  
-   Functions:		
+
+   Functions:
                 DllMain
                 xlAutoOpen
                 xlAutoClose
@@ -82,7 +82,7 @@ import core.stdc.wchar_ : wcslen;
 import core.stdc.wctype:towlower;
 import std.format;
 import xlld.wrap;
- 
+
 enum GWLP_WNDPROC=-4;
 enum MAXWORD = 0xFFFF;
 debug=0;
@@ -111,44 +111,44 @@ extern(Windows)
 	void cwCenter(HWND, int);
 	//INT_PTR /*CALLBACK*/ DIALOGMsgProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam);
 }
-  
+
 //   identifier for controls
-  
+
 enum FREE_SPACE                  =104;
 enum EDIT                        =101;
 enum TEST_EDIT                   =106;
 
 
-/**  
+/**
    Later, the instance handle is required to create dialog boxes.
    g_hInst holds the instance handle passed in by DllMain so that it is
    available for later use. hWndMain is used in several routines to
    store Microsoft Excel's hWnd. This is used to attach dialog boxes as
    children of Microsoft Excel's main window. A buffer is used to store
    the free space that DIALOGMsgProc will put into the dialog box.
- */ 
-  
+ */
+
 // Global Variables
 
 __gshared HWND g_hWndMain = null;
 __gshared HANDLE g_hInst = null;
 wchar[20] g_szBuffer = ""w;
 
-  
+
 /**
    Syntax of the Register Command:
-        REGISTER(module_text, procedure, type_text, function_text, 
+        REGISTER(module_text, procedure, type_text, function_text,
                  argument_text, macro_type, category, shortcut_text,
                  help_topic, function_help, argument_help1, argument_help2,...)
-  
-  
-   g_rgWorksheetFuncs will use only the first 11 arguments of 
+
+
+   g_rgWorksheetFuncs will use only the first 11 arguments of
    the Register function.
-  
+
    This is a table of all the worksheet functions exported by this module.
    These functions are all registered (in xlAutoOpen) when you
    open the XLL. Before every string, leave a space for the
-   byte count. The format of this table is the same as 
+   byte count. The format of this table is the same as
    arguments two through eleven of the REGISTER function.
    g_rgWorksheetFuncsRows define the number of rows in the table. The
    g_rgWorksheetFuncsCols represents the number of columns in the table.
@@ -176,10 +176,10 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetF
 		"number1,number2,..."w,
 		"1"w,
 		"Generic Add-In"w,
-		""w,                                    
-		""w,                                  
-		"Adds the arguments"w,   
-		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w                   
+		""w,
+		""w,
+		"Adds the arguments"w,
+		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w
 	],
 	[ "lastErrorMessage"w,
 		"Q"w, // up to 255 args in Excel 2007 and later,
@@ -188,9 +188,9 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetF
 		""w,
 		"1"w,
 		"Generic Add-In"w,
-		""w,                                    
-		""w,                                  
-		"Return last D error message"w,   
+		""w,
+		""w,
+		"Return last D error message"w,
 		""w,
 	],
 	[ "WrapSquare3"w,
@@ -200,13 +200,13 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetF
 		"number1,number2,..."w,
 		"1"w,
 		"Generic Add-In"w,
-		""w,                                    
-		""w,                                  
-		"Sum of squares of the arguments"w,   
-		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w                   
+		""w,
+		""w,
+		"Sum of squares of the arguments"w,
+		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w
 	],
 	[ "FuncFib"w,
-		"UU"w,	
+		"UU"w,
 		"FuncFib"w,
 		"Compute to..."w,
 		"1"w,
@@ -220,15 +220,15 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] g_rgWorksheetF
 
 /**
    g_rgCommandFuncs
-  
+
    This is a table of all the command functions exported by this module.
    These functions are all registered (in xlAutoOpen) when you
    open the XLL. Before every string, leave a space for the
-   byte count. The format of this table is the same as 
+   byte count. The format of this table is the same as
    arguments two through eight of the REGISTER function.
    g_rgFuncsRows define the number of rows in the table. The
    g_rgCommandFuncsCols represents the number of columns in the table.
-*/ 
+*/
 enum g_rgCommandFuncsRows =4;
 enum g_rgCommandFuncsCols =7;
 
@@ -270,7 +270,7 @@ __gshared wstring g_rgCommandFuncs[g_rgCommandFuncsRows][g_rgCommandFuncsCols] =
 /**
 
    g_rgMenu
-  
+
    This is a table describing the Generic drop-down menu. It is in
    the same format as the Microsoft Excel macro language menu tables.
    The first column contains the name of the menu or command, the
@@ -281,7 +281,7 @@ __gshared wstring g_rgCommandFuncs[g_rgCommandFuncsRows][g_rgCommandFuncsCols] =
    before every string so the byte count can be inserted. g_rgMenuRows
    defines the number of menu items. 5 represents the number of
    columns in the table.
-*/  
+*/
 
 enum g_rgMenuRows =5;
 enum g_rgMenuCols =5;
@@ -300,10 +300,10 @@ __gshared  wstring[g_rgMenuCols][g_rgMenuRows] g_rgMenu =
 		"Close the Generic X"w,          	"ww"w],
 ];
 
-  
+
 /**
    g_rgTool
-  
+
    This is a table describing the toolbar. It is in the same format
    as the Microsoft Excel macro language toolbar tables. The first column
    contains the ID of the tool, the second column contains the function
@@ -331,12 +331,12 @@ __gshared  wstring[g_rgToolCols][g_rgToolRows] g_rgTool=
 
 /**
    g_rgDialog
-  
+
    This is a table describing the sample dialog box used in the fDialog()
    function. Admittedly, it would be more efficient to use ints for
    the first 5 columns, but that makes the code much more complicated.
    Storing the text in string tables is another method that could be used.
-   Each string is byte counted, but you can also use normal strings and 
+   Each string is byte counted, but you can also use normal strings and
    copy them over into allocated memory with byte countes appended to the front.
    Alternatively, you can call TempStr12 on a normal string and use the
    string the call allocates to pass into the Excel functions.
@@ -369,29 +369,29 @@ __gshared  wstring[g_rgDialogCols][g_rgDialogRows] g_rgDialog =
 
 /**
    DllMain()
-  
+
    Purpose:
-  
+
         Windows calls DllMain, for both initialization and termination.
   		It also makes calls on both a per-process and per-thread basis,
   		so several initialization calls can be made if a process is multithreaded.
-  
+
         This function is called when the DLL is first loaded, with a dwReason
         of DLL_PROCESS_ATTACH.
-  
+
    Parameters:
-  
+
         HANDLE hDLL         Module handle.
         DWORD dwReason,     Reason for call
         LPVOID lpReserved   Reserved
-  
-   Returns: 
+
+   Returns:
         The function returns true (1) to indicate success. If, during
-        per-process initialization, the function returns zero, 
+        per-process initialization, the function returns zero,
         the system cancels the process.
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -427,46 +427,46 @@ extern(Windows) BOOL /*APIENTRY*/ DllMain( HANDLE hDLL, DWORD dwReason, LPVOID l
 
 /**
    xlAutoOpen()
-  
-   Purpose: 
+
+   Purpose:
         Microsoft Excel call this function when the DLL is loaded.
-  
+
         Microsoft Excel uses xlAutoOpen to load XLL files.
         When you open an XLL file, the only action
         Microsoft Excel takes is to call the xlAutoOpen function.
-  
+
         More specifically, xlAutoOpen is called:
-  
+
          - when you open this XLL file from the File menu,
          - when this XLL is in the XLSTART directory, and is
            automatically opened when Microsoft Excel starts,
          - when Microsoft Excel opens this XLL for any other reason, or
          - when a macro calls REGISTER(), with only one argument, which is the
            name of this XLL.
-  
-        xlAutoOpen is also called by the Add-in Manager when you add this XLL 
+
+        xlAutoOpen is also called by the Add-in Manager when you add this XLL
         as an add-in. The Add-in Manager first calls xlAutoAdd, then calls
         REGISTER("EXAMPLE.XLL"), which in turn calls xlAutoOpen.
-  
+
         xlAutoOpen should:
-  
+
          - register all the functions you want to make available while this
            XLL is open,
-  
+
          - add any menus or menu items that this XLL supports,
-  
+
          - perform any other initialization you need, and
-  
+
          - return 1 if successful, or return 0 if your XLL cannot be opened.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1 on success, 0 on failure
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -491,10 +491,10 @@ extern(Windows) int /*WINAPI*/ xlAutoOpen()
 	   calling xlGetName. This name is used as the first argument to the
 	   REGISTER function to specify the name of the XLL. Next, the XLL loops
 	   through the g_rgWorksheetFuncs[] table, and the g_rgCommandFuncs[]
-	   tableregistering each function in the table using xlfRegister. 
+	   tableregistering each function in the table using xlfRegister.
 	   Functions must be registered before you can add a menu item.
 	*/
-	
+
 	Excel12f(xlGetName, &xDLL, []);
 
 	foreach(row;g_rgWorksheetFuncs)
@@ -512,7 +512,7 @@ extern(Windows) int /*WINAPI*/ xlAutoOpen()
 	   argument to xlfAddMenu to actually add the drop-down menu before the
 	   help menu. As a last step the memory allocated for the array is
 	   released.
-	  
+
 	   This block uses TempStr12() and TempNum12(). Both create a temporary
 	   XLOPER12. The XLOPER12 created by TempStr12() contains the string passed to
 	   it. The XLOPER12 created by TempNum12() contains the number passed to it.
@@ -556,7 +556,7 @@ extern(Windows) int /*WINAPI*/ xlAutoOpen()
 	   table is then transferred into this array. The toolbar is added with
 	   xlfAddToolbar and subsequently displayed with xlcShowToolbar. Finally,
 	   the memory allocated for the toolbar and the XLL filename is released.
-	  
+
 	   This block uses TempInt12(), TempBool12(), and TempMissing12(). All three
 	   create a temporary XLOPER12. The XLOPER12 created by TempInt() contains
 	   the integer passed to it. TempBool12() creates an XLOPER12 containing the
@@ -607,46 +607,46 @@ extern(Windows) int /*WINAPI*/ xlAutoOpen()
 
 /**
    xlAutoClose()
-  
+
    Purpose: Microsoft Excel call this function when the DLL is unloaded.
-  
+
         xlAutoClose is called by Microsoft Excel:
-  
-         - when you quit Microsoft Excel, or 
+
+         - when you quit Microsoft Excel, or
          - when a macro sheet calls UNREGISTER(), giving a string argument
            which is the name of this XLL.
-  
+
         xlAutoClose is called by the Add-in Manager when you remove this XLL from
         the list of loaded add-ins. The Add-in Manager first calls xlAutoRemove,
         then calls UNREGISTER("GENERIC.XLL"), which in turn calls xlAutoClose.
-   
+
         xlAutoClose is called by GENERIC.XLL by the function fExit. This function
         is called when you exit Generic.
-   
+
         xlAutoClose should:
-   
+
          - Remove any menus or menu items that were added in xlAutoOpen,
-   
+
          - do any necessary global cleanup, and
-   
-         - delete any names that were added (names of exported functions, and 
-           so on). Remember that registering functions may cause names to 
+
+         - delete any names that were added (names of exported functions, and
+           so on). Remember that registering functions may cause names to
            be created.
-   
+
         xlAutoClose does NOT have to unregister the functions that were registered
         in xlAutoOpen. This is done automatically by Microsoft Excel after
         xlAutoClose returns.
-   
+
         xlAutoClose should return 1.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -655,7 +655,7 @@ extern(Windows) int /*WINAPI*/ xlAutoClose()
 	int i;
 	XLOPER12 xRes;
 
-	
+
 	/**
 	  This block first deletes all names added by xlAutoOpen or
 	   xlAutoRegister12. Next, it checks if the drop-down menu Generic still
@@ -677,9 +677,9 @@ extern(Windows) int /*WINAPI*/ xlAutoClose()
 
 	for (i = 0; i < g_rgCommandFuncsRows; i++)
 		Excel12f(xlfSetName, cast(XLOPER12*)0, [TempStr12(g_rgCommandFuncs[i][2])]);
-	
+
 	// Everything else works as documented
-	
+
 	Excel12f(xlfGetBar, &xRes, [TempInt12(10), TempStr12("Generic"w), TempInt12(0)]);
 
 	if (xRes.xltype != xltypeErr)
@@ -709,27 +709,27 @@ extern(Windows) int /*WINAPI*/ xlAutoClose()
 
 /**
    lpwstricmp()
-  
-   Purpose: 
-  
+
+   Purpose:
+
         Compares a pascal string and a null-terminated C-string to see
         if they are equal.  Method is case insensitive
-  
+
    Parameters:
-  
+
         LPWSTR s    First string (null-terminated)
         LPWSTR t    Second string (byte counted)
-  
-   Returns: 
-  
+
+   Returns:
+
         int         0 if they are equal
                     Nonzero otherwise
-  
+
    Comments:
-  
+
         Unlike the usual string functions, lpwstricmp
         doesn't care about collating sequence.
-  
+
    History:  Date       Author        Reason
 */
 
@@ -744,16 +744,16 @@ int lpwstricmp(const(wchar*) s, const(wchar*) t)
 	{
 		if (towlower(s[i-1]) != towlower(t[i]))
 			return 1;
-	}										  
+	}
 	return 0;
 }
 
 
 /**
    xlAutoRegister12()
-  
+
    Purpose:
-  
+
         This function is called by Microsoft Excel if a macro sheet tries to
         register a function without specifying the type_text argument. If that
         happens, Microsoft Excel calls xlAutoRegister12, passing the name of the
@@ -762,24 +762,24 @@ int lpwstricmp(const(wchar*) s, const(wchar*) t)
         specify the type_text argument. If xlAutoRegister12 does not recognize the
         function name, it should return a #VALUE! error. Otherwise, it should
         return whatever REGISTER returned.
-  
+
    Parameters:
-  
+
         LPXLOPER12 pxName   xltypeStr containing the
                             name of the function
                             to be registered. This is not
                             case sensitive.
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12          xltypeNum containing the result
                             of registering the function,
                             or xltypeErr containing #VALUE!
                             if the function could not be
                             registered.
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -788,14 +788,14 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAutoRegister12(LPXLOPER12 pxName)
 	static XLOPER12 xDLL, xRegId;
 	int i;
 
-	
+
 	/**
 	   This block initializes xRegId to a #VALUE! error first. This is done in
-	   case a function is not found to register. Next, the code loops through 
-	   the functions in g_rgFuncs[] and uses lpwstricmp to determine if the 
-	   current row in g_rgFuncs[] represents the function that needs to be 
-	   registered. When it finds the proper row, the function is registered 
-	   and the register ID is returned to Microsoft Excel. If no matching 
+	   case a function is not found to register. Next, the code loops through
+	   the functions in g_rgFuncs[] and uses lpwstricmp to determine if the
+	   current row in g_rgFuncs[] represents the function that needs to be
+	   registered. When it finds the proper row, the function is registered
+	   and the register ID is returned to Microsoft Excel. If no matching
 	   function is found, an xRegId is returned containing a #VALUE! error.
 	*/
 
@@ -830,7 +830,7 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAutoRegister12(LPXLOPER12 pxName)
 	{
 		if (!lpwstricmp(g_rgCommandFuncs[i][0].ptr, pxName.val.str))
 		{
-			Excel12f(xlfRegister, cast(XLOPER12*)0, 
+			Excel12f(xlfRegister, cast(XLOPER12*)0,
 				  [cast(LPXLOPER12) &xDLL,
 				  cast(LPXLOPER12) TempStr12(g_rgCommandFuncs[i][0]),
 				  cast(LPXLOPER12) TempStr12(g_rgCommandFuncs[i][1]),
@@ -844,27 +844,27 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAutoRegister12(LPXLOPER12 pxName)
 
 			return cast(LPXLOPER12) &xRegId;
 		}
-	}     
+	}
 	return cast(LPXLOPER12) &xRegId;
 }
 
 /**
    xlAutoAdd()
-  
+
    Purpose:
-  
+
         This function is called by the Add-in Manager only. When you add a
         DLL to the list of active add-ins, the Add-in Manager calls xlAutoAdd()
         and then opens the XLL, which in turn calls xlAutoOpen.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -878,26 +878,26 @@ extern(Windows) int /*WINAPI*/ xlAutoAdd()
 
 /**
    xlAutoRemove()
-  
+
    Purpose:
-  
+
         This function is called by the Add-in Manager only. When you remove
         an XLL from the list of active add-ins, the Add-in Manager calls
         xlAutoRemove() and then UNREGISTER("GENERIC.XLL").
-     
+
         You can use this function to perform any special tasks that need to be
         performed when you remove the XLL from the Add-in Manager's list
         of active add-ins. For example, you may want to delete an
         initialization file when the XLL is removed from the list.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -911,29 +911,29 @@ extern(Windows) int /*WINAPI*/ xlAutoRemove()
 
 /**
    xlAddInManagerInfo12()
-  
+
    Purpose:
-  
+
         This function is called by the Add-in Manager to find the long name
         of the add-in. If xAction = 1, this function should return a string
         containing the long name of this XLL, which the Add-in Manager will use
         to describe this XLL. If xAction = 2 or 3, this function should return
         #VALUE!.
-  
+
    Parameters:
-  
+
         LPXLOPER12 xAction  What information you want. One of:
                               1 = the long name of the
                                   add-in
                               2 = reserved
                               3 = reserved
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12          The long name or #VALUE!.
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -943,8 +943,8 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAddInManagerInfo12(LPXLOPER12 xAction)
 
 	//
 	// This code coerces the passed-in value to an integer. This is how the
-	// code determines what is being requested. If it receives a 1, 
-	// it returns a string representing the long name. If it receives 
+	// code determines what is being requested. If it receives a 1,
+	// it returns a string representing the long name. If it receives
 	// anything else, it returns a #VALUE! error.
 	//
 
@@ -968,27 +968,27 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ xlAddInManagerInfo12(LPXLOPER12 xAction)
 
 /**
    DIALOGMsgProc()
-  
+
    Purpose:
-  
+
        This procedure is associated with the native Windows dialog box that
        fShowDialog displays. It provides the service routines for the events
        (messages) that occur when the user operates one of the dialog
        box's buttons, entry fields, or controls.
-  
+
    Parameters:
-  
+
         HWND hWndDlg        Contains the HWND of the dialog box
         UINT message        The message to respond to
         WPARAM wParam       Arguments passed by Windows
         LPARAM lParam
-  
-   Returns: 
-  
+
+   Returns:
+
         INT_PTR                true if message processed, false if not.
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1006,7 +1006,7 @@ extern(Windows) INT_PTR /*CALLBACK*/ DIALOGMsgProc(HWND hWndDlg, UINT message, W
 
 	switch (message)
 	{
-	
+
 	case WM_INITDIALOG:
 		SetDlgItemTextW(hWndDlg, FREE_SPACE, cast(wchar*)g_szBuffer);
 		break;
@@ -1035,36 +1035,36 @@ extern(Windows) INT_PTR /*CALLBACK*/ DIALOGMsgProc(HWND hWndDlg, UINT message, W
 
 /**
    ExcelCursorProc()
-  
+
    Purpose:
-  
+
         When a modal dialog box is displayed over Microsoft Excel's window, the
         cursor is a busy cursor over Microsoft Excel's window. This WndProc traps
         WM_SETCURSORs and changes the cursor back to a normal arrow.
-  
+
    Parameters:
-  
+
         HWND hWndDlg        Contains the HWND Window
         UINT message        The message to respond to
         WPARAM wParam       Arguments passed by Windows
         LPARAM lParam
-  
-   Returns: 
-  
+
+   Returns:
+
         LRESULT             0 if message handled, otherwise the result of the
                             default WndProc
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
 // Create a place to store Microsoft Excel's WndProc address //
 static WNDPROC g_lpfnExcelWndProc = null;
 
-extern(Windows) LRESULT /*CALLBACK*/ ExcelCursorProc(HWND hwnd, 
-                                 UINT wMsg, 
-                                 WPARAM wParam, 
+extern(Windows) LRESULT /*CALLBACK*/ ExcelCursorProc(HWND hwnd,
+                                 UINT wMsg,
+                                 WPARAM wParam,
                                  LPARAM lParam)
 {
 	//
@@ -1086,20 +1086,20 @@ extern(Windows) LRESULT /*CALLBACK*/ ExcelCursorProc(HWND hwnd,
 
 /**
    HookExcelWindow()
-  
+
    Purpose:
-  
+
        This is the function that installs ExcelCursorProc so that it is
        called before Microsoft Excel's main WndProc.
-  
+
    Parameters:
-  
+
         HANDLE hWndExcel    This is a handle to Microsoft Excel's hWnd
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1119,20 +1119,20 @@ extern(Windows) void /*FAR PASCAL*/ HookExcelWindow(HANDLE hWndExcel)
 
 /**
    UnhookExcelWindow()
-  
+
    Purpose:
-  
+
         This is the function that removes the ExcelCursorProc that was
         called before Microsoft Excel's main WndProc.
-  
+
    Parameters:
-  
+
         HANDLE hWndExcel    This is a handle to Microsoft Excel's hWnd
-  
-   Returns: 
-  
+
+   Returns:
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1151,18 +1151,18 @@ extern(Windows) void /*FAR PASCAL*/ UnhookExcelWindow(HANDLE hWndExcel)
 
 /**
    fShowDialog()
-  
+
    Purpose:
         This function loads and shows the native Windows dialog box.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int 0           To indicate successful completion
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1216,22 +1216,22 @@ extern(Windows) int /*WINAPI*/ fShowDialog()
 
 /**
    GetHwnd()
-  
+
    Purpose:
-  
-        This function returns the hWnd of Excel's main window. 
-  
+
+        This function returns the hWnd of Excel's main window.
+
    Parameters:
-  
+
         HWND * phwnd    Will contain Excel's hWnd
-  
-   Returns: 
-  
+
+   Returns:
+
         BOOL            false  Could not find Excel's hWnd
                         true   Found Excel's hWnd
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 extern(Windows) BOOL GetHwnd(HWND * pHwnd)
@@ -1251,21 +1251,21 @@ extern(Windows) BOOL GetHwnd(HWND * pHwnd)
 
 /**
    Func1()
-  
+
    Purpose:
-  
+
         This is a typical user-defined function provided by an XLL.
-  
+
    Parameters:
-  
+
         LPXLOPER12 x    (Ignored)
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      Always the string "Func1"
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1288,28 +1288,28 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ Func1 (LPXLOPER12 x)
 
 /**
    FuncSum()
-  
+
    Purpose:
-  
+
         This is a typical user-defined function provided by an XLL. This
         function takes 1-29 arguments and computes their sum. Each argument
         can be a single number, a range, or an array.
-  
+
    Parameters:
-  
+
         LPXLOPER12 ...  1 to 29 arguments
                         (can be references or values)
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      The sum of the arguments
                         or #VALUE! if there are
                         non-numerics in the supplied
                         argument list or in an cell in a
                         range or element in an array
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1329,7 +1329,7 @@ extern(Windows) LPXLOPER12 WrapSquare3(
 	auto args=px1.fromXLOPER12!(double[]);
 	double[][] retD;
 	if (args.length==0)
-		return makeXLOPER12Error(100,"you must pass at least one argument");
+		return makeXLOPER12Error(100);
 	retD.length=args.length;
 	foreach(i;0..args.length)
 	{
@@ -1352,14 +1352,14 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncSum(
                         LPXLOPER12 px25,LPXLOPER12 px26,LPXLOPER12 px27,LPXLOPER12 px28,
                         LPXLOPER12 px29)
 {
-	static XLOPER12 xResult;// Return value 
-	double d=0;				// Accumulate result 
-	int iArg;				// The argument being processed 
-	LPXLOPER12 /*FAR*/ *ppxArg;	// Pointer to the argument being processed 
-	XLOPER12 xMulti;		// Argument coerced to xltypeMulti 
-	long i; /**__int64*/				// Row and column counters for arrays 
-	LPXLOPER12 px;			// Pointer into array 
-	int error = -1;			// -1 if no error; error code otherwise 
+	static XLOPER12 xResult;// Return value
+	double d=0;				// Accumulate result
+	int iArg;				// The argument being processed
+	LPXLOPER12 /*FAR*/ *ppxArg;	// Pointer to the argument being processed
+	XLOPER12 xMulti;		// Argument coerced to xltypeMulti
+	long i; /**__int64*/				// Row and column counters for arrays
+	LPXLOPER12 px;			// Pointer into array
+	int error = -1;			// -1 if no error; error code otherwise
 
 	/**
 	   This block accumulates the arguments passed in. Because FuncSum is a
@@ -1385,7 +1385,7 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncSum(
 
 		switch ((*ppxArg).xltype)
 		{
-		
+
 		case xltypeMissing:
 			break;
 
@@ -1399,8 +1399,8 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncSum(
 			if (xlretUncalced == Excel12f(xlCoerce, &xMulti, [cast(LPXLOPER12) *ppxArg, TempInt12(xltypeMulti)]))
 			{
 				//
-				// That coerce might have failed due to an 
-				// uncalced cell, in which case, we need to 
+				// That coerce might have failed due to an
+				// uncalced cell, in which case, we need to
 				// return immediately. Microsoft Excel will
 				// call us again in a moment after that cell
 				// has been calced.
@@ -1466,7 +1466,7 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncSum(
 		xResult.xltype = xltypeNum;
 		xResult.val.num = d;
 	}
-	
+
 	//Word of caution - returning static XLOPERs/XLOPER12s is not thread safe
 	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
 	return cast(LPXLOPER12) &xResult;
@@ -1475,22 +1475,22 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncSum(
 
 /**
    FuncFib()
-  
+
    Purpose:
-  
+
         A sample function that computes the nth Fibonacci number.
         Features a call to several wrapper functions.
-  
+
    Parameters:
-  
+
         LPXLOPER12 n    int to compute to
-  
-   Returns: 
-  
+
+   Returns:
+
         LPXLOPER12      nth Fibonacci number
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1549,22 +1549,22 @@ extern(Windows) LPXLOPER12 /*WINAPI*/ FuncFib (LPXLOPER12 n)
 
 /**
    fDance()
-  
+
    Purpose:
-  
+
         This is an example of a lengthy operation. It calls the function xlAbort
-        occasionally. This yields the processor (allowing cooperative 
+        occasionally. This yields the processor (allowing cooperative
         multitasking), and checks if the user has pressed ESC to abort this
         operation. If so, it offers the user a chance to cancel the abort.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1581,7 +1581,7 @@ extern(Windows) int /*WINAPI*/ fDance()
 	   Check what kind of sheet is active. If it is a worksheet or macro
 	   sheet, this function will move the selection in a loop to show
 	   activity. In any case, it will update the status bar with a countdown.
-	  
+
 	   Call xlSheetId; if that fails the current sheet is not a macro sheet or
 	   worksheet. Next, get the time at which to start. Then start a while
 	   loop that will run for one minute. During the while loop, check if the
@@ -1590,7 +1590,7 @@ extern(Windows) int /*WINAPI*/ fDance()
 	   confirmed, clear the abort state and continue. After checking for an
 	   abort, move the active cell if on a worksheet or macro. Then
 	   update the status bar with the time remaining.
-	  
+
 	   This block uses TempActiveCell12(), which creates a temporary XLOPER12.
 	   The XLOPER12 contains a reference to a single cell on the active sheet.
 	   This function is part of the framework library.
@@ -1605,7 +1605,7 @@ extern(Windows) int /*WINAPI*/ fDance()
 		Excel12f(xlAbort, &xAbort, []);
 		if (xAbort.val.bool_)
 		{
-			Excel12f(xlcAlert, &xConfirm, 
+			Excel12f(xlcAlert, &xConfirm,
 				  [TempStr12("Are you sure you want to cancel this operation?"w),
 				  TempNum12(1)]);
 			if (xConfirm.val.bool_)
@@ -1638,20 +1638,20 @@ extern(Windows) int /*WINAPI*/ fDance()
 
 /**
    fDialog()
-  
+
    Purpose:
-  
+
         An example of how to create a Microsoft Excel
         UDD (User Defined Dialog) from a DLL.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1675,7 +1675,7 @@ extern(Windows) int /*WINAPI*/ fDialog()
 	   are freed and the name "GENERIC_List1"is deleted.
 	*/
 
-	px = prgrgx = cast(LPXLOPER12) GlobalLock(hrgrgx = 
+	px = prgrgx = cast(LPXLOPER12) GlobalLock(hrgrgx =
 										GlobalAlloc(GMEM_MOVEABLE, XLOPER12.sizeof* g_rgDialogCols * g_rgDialogRows));
 
 	for (i = 0; i < g_rgDialogRows; i++)
@@ -1743,23 +1743,23 @@ extern(Windows) int /*WINAPI*/ fDialog()
 
 /**
    fExit()
-  
+
    Purpose:
-  
+
         This is a user-initiated routine to exit GENERIC.XLL You may be tempted to
         simply call UNREGISTER("GENERIC.XLL") in this function. Don't do it! It
         will have the effect of forcefully unregistering all of the functions in
         this DLL, even if they are registered somewhere else! Instead, unregister
         the functions one at a time.
-  
+
    Parameters:
-  
-   Returns: 
-  
+
+   Returns:
+
         int         1
-  
+
    Comments:
-  
+
    History:  Date       Author        Reason
 */
 
@@ -1778,7 +1778,7 @@ extern(Windows) int /*WINAPI*/ fExit()
 	*/
 
 	xFunc.xltype = xltypeStr; // Make xFunc a string //
-	
+
 	Excel12f(xlGetName, &xDLL, []);
 
 	for (i = 0; i < g_rgWorksheetFuncsRows; i++)

@@ -35,30 +35,30 @@ import std.traits;
 import std.variant;
 import win32.winuser:PostMessage,CallWindowProc,GetWindowLongPtr,SetWindowLongPtr,DialogBox;
 import core.sys.windows.windows;
-import xlcall;
-import framework;
+import xlld.xlcall;
+import xlld.framework;
 import core.stdc.wchar_ : wcslen;
 import core.stdc.wctype:towlower;
 import std.format;
-import std.experimental.allocator;  
+import std.experimental.allocator;
 import std.conv:to;
 import std.exception:enforce;
 /+
-  
+
 /**
    Syntax of the Register Command:
-        REGISTER(module_text, procedure, type_text, function_text, 
+        REGISTER(module_text, procedure, type_text, function_text,
                  argument_text, macro_type, category, shortcut_text,
                  help_topic, function_help, argument_help1, argument_help2,...)
-  
-  
-   g_rgWorksheetFuncs will use only the first 11 arguments of 
+
+
+   g_rgWorksheetFuncs will use only the first 11 arguments of
    the Register function.
-  
+
    This is a table of all the worksheet functions exported by this module.
    These functions are all registered (in xlAutoOpen) when you
    open the XLL. Before every string, leave a space for the
-   byte count. The format of this table is the same as 
+   byte count. The format of this table is the same as
    arguments two through eleven of the REGISTER function.
    g_rgWorksheetFuncsRows define the number of rows in the table. The
    g_rgWorksheetFuncsCols represents the number of columns in the table.
@@ -86,13 +86,13 @@ __gshared wstring[g_rgWorksheetFuncsCols][g_rgWorksheetFuncsRows] exportedFuncti
 		"number1,number2,..."w,
 		"1"w,
 		"Generic Add-In"w,
-		""w,                                    
-		""w,                                  
-		"Adds the arguments"w,   
-		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w                   
+		""w,
+		""w,
+		"Adds the arguments"w,
+		"Number1,number2,... are 1 to 29 arguments for which you want to sum."w
 	],
 	[ "FuncFib"w,
-		"UU"w,	
+		"UU"w,
 		"FuncFib"w,
 		"Compute to..."w,
 		"1"w,
@@ -161,14 +161,14 @@ auto fromXLOPER12(T=Variant[][])(LPXLOPER12 pxArg)
 if (is(T==Variant[][]) || (is(T==double[][])) || is(T==double[]))
 {
 	ExcelResult!T ret;
-	LPXLOPER12 px;			// Pointer into array 
+	LPXLOPER12 px;			// Pointer into array
 	ret.success=true;
 	ret.status=ExcelReturnStatus.success;
 
 /*	scope(exit)
 		Excel12f(xlFree, cast(XLOPER12*)0, [cast(LPXLOPER12) &pxArg]);
 */	switch (pxArg.xltype)
-	{	
+	{
 		case xltypeMissing:
 			return ExcelResult!T(false,ExcelReturnStatus.missing,T.init);
 
@@ -192,7 +192,7 @@ if (is(T==Variant[][]) || (is(T==double[][])) || is(T==double[]))
 		case xltypeRef:
 		case xltypeSRef:
 		case xltypeMulti:
-			XLOPER12 xMulti;		// Argument coerced to xltypeMulti 
+			XLOPER12 xMulti;		// Argument coerced to xltypeMulti
 			scope(exit)
 			{
 				Excel12f(xlFree, cast(XLOPER12*)0, [cast(LPXLOPER12) &xMulti]);
@@ -345,7 +345,7 @@ LPXLOPER12 makeXLOPER12(wstring arg)
 	lpx.val.str = arg.dup.ptr.makePascalString;
 	return lpx;
 }
- 
+
 LPXLOPER12 makeXLOPER12(Variant[] arg)
 {
 	return makeXLOPER12([arg]);
@@ -357,12 +357,12 @@ LPXLOPER12 makeXLOPER12(Variant[][] arg)
 	auto numCols=arg[0].length;
 	foreach(row;arg[0..$])
 		enforce(row.length==numCols, new Exception("makeXLOPER12: arg must be rectangular"));
-	
+
 	auto xlValuesLength=numRows*numCols;
 	auto ret=excelCallPool.allocate!XLOPER12;
 	auto xlValues= excelCallPool.allocateArray!XLOPER12(xlValuesLength);
 
-	foreach(i;0..numRows)		
+	foreach(i;0..numRows)
 	{
 		foreach(j;0..numCols)
 		{
@@ -418,7 +418,7 @@ if (is(T==double))
 	auto xlValuesLength=numRows*numCols;
 	auto ret=excelCallPool.allocate!XLOPER12;
 	auto xlValues=excelCallPool.allocateArray!XLOPER12(xlValuesLength);
-	foreach(i;0..numRows)		
+	foreach(i;0..numRows)
 	{
 		foreach(j;0..numCols)
 		{
@@ -452,8 +452,8 @@ if (isSomeString!(T))
 	auto xlValuesLength=numRows*numCols;
 	auto ret=excelCallPool.allocate!XLOPER12;
 	auto xlValues=excelCallPool.allocateArray!XLOPER12(xlValuesLength);
-	
-	foreach(i;0..numRows)		
+
+	foreach(i;0..numRows)
 	{
 		foreach(j;0..numCols)
 		{

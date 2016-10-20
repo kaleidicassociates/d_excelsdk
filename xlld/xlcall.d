@@ -1,44 +1,45 @@
-/**  
+/**
     Microsoft Excel Developer's Toolkit
     Version 15.0
-  
+
     File:           INCLUDE\XLCALL.H
     Description:    Header file for for Excel callbacks
     import std.c.windows.windows;import std.c.windows.windows;latform:       Microsoft Windows
-  
+
     DEPENDENCY:
     Include <windows.h> before you include this.
-  
+
     This file defines the constants and
     data types which are used in the
     Microsoft Excel C API.
-  
+
   	Ported to the D Programming Language by Laeeth Isharc (2015)
 */
-//import std.c.windows.windows;
+module xlld.xlcall;
+
 import core.sys.windows.windows;
+
 /**
-   XL 12 Basic Datatypes 
+   XL 12 Basic Datatypes
  */
 extern(System) int Excel4v(int xlfn, LPXLOPER operRes, int count, LPXLOPER* opers); //pascal
 extern(C)int Excel4(int xlfn, LPXLOPER operRes, int count,... );  //_cdecl
 //extern(System)int Excel12(int xlfn, LPXLOPER12 operRes, int count,... ); //_cdecl
-	
+
 extern(Windows)
 {
-//	alias BYTE=ubyte;
-//	alias WORD=short; 				// guess
-//	alias DWORD=long;				// guess
-//	alias DWORD_PTR=DWORD*;			// guess
-//	alias BOOL=int;
+	alias BYTE=ubyte;
+	alias WORD=ushort;
+	alias DWORD=uint;				// guess
+	alias DWORD_PTR=DWORD*;			// guess
+	alias BOOL=int;
 	alias XCHAR=wchar;
-	alias RW=int;					// XL 12 Row 
+	alias RW=int;					// XL 12 Row
 	alias COL=int;					// XL 12 Column
 	alias IDSHEET=DWORD_PTR;		// XL12 Sheet ID
 
 	/**
-	   XLREF structure 
-	  
+	   XLREF structure
 	   Describes a single rectangular reference.
 	*/
 
@@ -55,13 +56,12 @@ extern(Windows)
 
 	/**
 	   XLMREF structure
-	  
 	   Describes multiple rectangular references.
-	   This is a variable size structure, default 
+	   This is a variable size structure, default
 	   size is 1 reference.
 	*/
 
-	struct XLMREF 
+	struct XLMREF
 	{
 		WORD count;
 		XLREF* reftbl;					/* actually reftbl[count] */
@@ -71,8 +71,8 @@ extern(Windows)
 
 
 	/**
-	   XLREF12 structure 
-	  
+	   XLREF12 structure
+
 	   Describes a single XL 12 rectangular reference.
 	*/
 
@@ -88,9 +88,9 @@ extern(Windows)
 
 	/**
 	   XLMREF12 structure
-	  
+
 	   Describes multiple rectangular XL 12 references.
-	   This is a variable size structure, default 
+	   This is a variable size structure, default
 	   size is 1 reference.
 	*/
 
@@ -104,7 +104,7 @@ extern(Windows)
 
 	/**
 	   FP structure
-	  
+
 	   Describes FP structure.
 	*/
 
@@ -117,7 +117,7 @@ extern(Windows)
 
 	/**
 	   FP12 structure
-	  
+
 	   Describes FP structure capable of handling the big grid.
 	*/
 
@@ -130,21 +130,27 @@ extern(Windows)
 
 
 	/**
-	   XLOPER structure 
-	  
+	   XLOPER structure
+
 	   Excel's fundamental data type: can hold data
-	   of any type. Use "R" as the argument type in the 
+	   of any type. Use "R" as the argument type in the
 	   REGISTER function.
 	 */
 
+	version (UNICODE) {
+		static assert(false, "Unicode not supported right now");
+	} else {
+		import core.sys.windows.winnt: LPSTR;
+	}
+
 	struct XLOPER
 	{
-		union VAL 
+		union VAL
 		{
-			double num;					/* xltypeNum */
+			double num;
 			LPSTR str;					/* xltypeStr */
 			WORD bool_;					/* xltypeBool */
-			WORD err;					/* xltypeErr */
+			WORD err;
 			short w;					/* xltypeInt */
 			struct SREF
 			{
@@ -152,20 +158,20 @@ extern(Windows)
 				XLREF ref_;
 			}
 			SREF sref;						/* xltypeSRef */
-			struct MREF 
+			struct MREF
 			{
 				XLMREF *lpmref;
 				IDSHEET idSheet;
 			}
 			MREF mref;						/* xltypeRef */
-			struct ARRAY 
+			struct ARRAY
 			{
 				XLOPER *lparray;
 				WORD rows;
 				WORD columns;
 			}
 			ARRAY array;					/* xltypeMulti */
-			struct FLOW 
+			struct FLOW
 			{
 				union VALFLOW
 				{
@@ -197,10 +203,10 @@ extern(Windows)
 	alias LPXLOPER=XLOPER* ;
 
 	/**
-	   XLOPER12 structure 
-	  
+	   XLOPER12 structure
+
 	   Excel 12's fundamental data type: can hold data
-	   of any type. Use "U" as the argument type in the 
+	   of any type. Use "U" as the argument type in the
 	   REGISTER function.
 	 */
 
@@ -219,20 +225,20 @@ extern(Windows)
 				XLREF12 ref_;
 			}
 			SREF sref;						/* xltypeSRef */
-			struct MREF 
+			struct MREF
 			{
 				XLMREF12 *lpmref;
 				IDSHEET idSheet;
 			}
 			MREF mref;						/* xltypeRef */
-			struct ARRAY 
+			struct ARRAY
 			{
 				XLOPER12 *lparray;
 				RW rows;
 				COL columns;
 			}
 			ARRAY array;					/* xltypeMulti */
-			struct FLOW 
+			struct FLOW
 			{
 				union VALFLOW
 				{
@@ -261,12 +267,12 @@ extern(Windows)
 		VAL val;
 		DWORD xltype;
 	}
-
+	pragma(msg, XLOPER12.VAL.FLOW.sizeof);
 	alias LPXLOPER12=XLOPER12*;
 
 	/**
 	   XLOPER and XLOPER12 data types
-	  
+
 	   Used for xltype field of XLOPER and XLOPER12 structures
 	*/
 
@@ -290,7 +296,7 @@ extern(Windows)
 
 	/*
 	   Error codes
-	  
+
 	   Used for val.err field of XLOPER and XLOPER12 structures
 	   when constructing error XLOPERs and XLOPER12s
 	*/
@@ -305,9 +311,9 @@ extern(Windows)
 	enum xlerrGettingData=43;
 
 
-	/* 
+	/*
 	   Flow data types
-	  
+
 	   Used for val.flow.xlflow field of XLOPER and XLOPER12 structures
 	   when constructing flow-control XLOPERs and XLOPER12s
 	 */
@@ -321,17 +327,17 @@ extern(Windows)
 
 	/**
 	   Return codes
-	  
+
 	   These values can be returned from Excel4(), Excel4v(), Excel12() or Excel12v().
 	*/
 
-	enum xlretSuccess=       0;    /* success */ 
+	enum xlretSuccess=       0;    /* success */
 	enum xlretAbort=         1;    /* macro halted */
-	enum xlretInvXlfn=       2;    /* invalid function number */ 
-	enum xlretInvCount=      4;    /* invalid number of arguments */ 
-	enum xlretInvXloper=     8;    /* invalid OPER structure */  
-	enum xlretStackOvfl=     16;   /* stack overflow */  
-	enum xlretFailed=        32;   /* command failed */  
+	enum xlretInvXlfn=       2;    /* invalid function number */
+	enum xlretInvCount=      4;    /* invalid number of arguments */
+	enum xlretInvXloper=     8;    /* invalid OPER structure */
+	enum xlretStackOvfl=     16;   /* stack overflow */
+	enum xlretFailed=        32;   /* command failed */
 	enum xlretUncalced=      64;   /* uncalced cell */
 	enum xlretNotThreadSafe= 128;  /* not allowed during multi-threaded calc */
 	enum xlretInvAsynchronousContext= 256;  /* invalid asynchronous function handle */
@@ -340,11 +346,11 @@ extern(Windows)
 
 	/**
 	   XLL events
-	  
+
 	   Passed in to an xlEventRegister call to register a corresponding event.
 	*/
 
-	enum xleventCalculationEnded=     1;    /* Fires at the end of calculation */ 
+	enum xleventCalculationEnded=     1;    /* Fires at the end of calculation */
 	enum xleventCalculationCanceled=  2;   /* Fires when calculation is interrupted */
 
 /**
@@ -380,7 +386,7 @@ extern(Windows)
 
 	/**
 	   Function number bits
-	*/ 
+	*/
 
 	enum xlCommand=   0x8000;
 	enum xlSpecial=   0x4000;
@@ -390,7 +396,7 @@ extern(Windows)
 
 	/**
 	   Auxiliary function numbers
-	  
+
 	   These functions are available only from the C API,
 	   not from the Excel macro language.
 	*/
@@ -428,7 +434,7 @@ extern(Windows)
 	enum dtSheet=0;// sheet
 	enum dtProc= 1;// XLM macro
 	enum dtChart=2;// Chart
-	enum dtBasic=6;// VBA 
+	enum dtBasic=6;// VBA
 
 	/* hit test codes */
 	enum htNone		=0x00;//=none of below;
@@ -494,9 +500,9 @@ extern(Windows)
 
 
 
-	/* 
+	/*
 	   User defined function
-	  
+
 	   First argument should be a function reference.
 	*/
 
@@ -1495,4 +1501,3 @@ extern(Windows)
 	enum xlcOptionsSpell=(755 | xlCommand);
 	enum xlcHideallInkannots=(808 | xlCommand);
 } // extern(Windows)
-

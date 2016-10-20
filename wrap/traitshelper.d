@@ -208,7 +208,7 @@ void def(alias _fn, Options...)() {
     
     //pragma(msg,fn);
     pragma(msg,args.xllrename);
-    addName(args.xllrename);
+//    addName(args.xllrename);
     //PyMethodDef empty;
     //ready_module_methods(args.modulename);
     //PyMethodDef[]* list = &module_methods[args.modulename];
@@ -225,6 +225,8 @@ void def(alias _fn, Options...)() {
     XllThreadSafe!false,XllMacro!false, XllAllowAbort!false,XllVolatile!false,XllDisableFunctionWizard!false,
     XlldisableReplaceCalc!false)
 */
+
+import std.traits : isInstanceOf;
 
 
 struct XllRename(string _XllRename) {

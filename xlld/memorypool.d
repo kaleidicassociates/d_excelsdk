@@ -15,13 +15,14 @@ MemoryPool.d - port of MemoryPool.cpp and MemoryPool.h by Laeeth Isharc
 //              pointer is set back to the beginning of the array.
 //
 //              Each pool has MEMORYSIZE bytes of storage space available to it
-// 
+//
 // Platform:    Microsoft Windows
 //
 ///***************************************************************************
 */
+module xlld.memorypool;
+
 import core.sys.windows.windows;
-//import std.c.windows.windows;
 
 //
 // Total amount of memory to allocate for all temporary XLOPERs
@@ -31,7 +32,7 @@ enum MEMORYSIZE=10240;
 
 struct MemoryPool
 {
-	DWORD m_dwOwner=cast(DWORD)-1;			// ID of ownning thread
+	uint m_dwOwner=cast(uint)-1;			// ID of ownning thread
 	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
 	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
 
