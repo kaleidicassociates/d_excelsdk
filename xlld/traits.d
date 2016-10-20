@@ -60,6 +60,23 @@ version(unittest) {
         return func;
     }
 
+    WorksheetFunction operToOperFunction(wstring name) @safe pure nothrow {
+        WorksheetFunction func = {
+          procedure: name,
+          typeText: "UU"w,
+          functionText: name,
+          argumentText: ""w,
+          macroType: "1"w,
+          category: ""w,
+          shortcutText: ""w,
+          helpTopic: ""w,
+          functionHelp: ""w,
+          argumentHelp: [],
+        };
+
+        return func;
+    }
+
 }
 
 /**
@@ -109,6 +126,8 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
             return "B";
         else static if(is(T == FP12*))
             return "K%";
+        else static if(is(T == LPXLOPER12))
+            return "U";
         else
             static assert(false, "Unsupported type " ~ T.stringof);
     }
@@ -121,7 +140,7 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
 }
 
 
-@("getTypeText for doubles and FP12s")
+@("getTypeText")
 @safe pure unittest {
     import std.conv: to; // working around unit-threaded bug
 
@@ -136,6 +155,9 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
 
     FP12* qux(double);
     getTypeText!qux.to!string.shouldEqual("K%B");
+
+    LPXLOPER12 fun(LPXLOPER12);
+    getTypeText!fun.to!string.shouldEqual("UU");
 }
 
 
@@ -150,7 +172,7 @@ private template isWorksheetFunction(alias T) {
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
     enum canGetPointerToIt = __traits(compiles, &T);
-    enum isSupportedType(U) = is(U == double) || is(U == FP12*);
+    enum isSupportedType(U) = is(U == double) || is(U == FP12*) || is(U == LPXLOPER12);
 
     static if(canGetPointerToIt)
         enum isWorksheetFunction =
@@ -191,6 +213,7 @@ WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
         [
             doubleToDoubleFunction("FuncMulByTwo"),
             FP12ToDoubleFunction("FuncFP12"),
+            operToOperFunction("FuncFib"),
         ]
     );
 }
@@ -245,6 +268,7 @@ unittest {
         [
             doubleToDoubleFunction("FuncMulByTwo"),
             FP12ToDoubleFunction("FuncFP12"),
+            operToOperFunction("FuncFib"),
         ]
     );
 }

@@ -16,3 +16,8 @@ extern(C) export double FuncMulByTwo(double n) {
 extern(C) export double FuncFP12(FP12* cells) {
     return 0;
 }
+
+
+extern(C) export LPXLOPER12 FuncFib (LPXLOPER12 n) {
+    return LPXLOPER12.init;
+}
