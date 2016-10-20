@@ -48,14 +48,25 @@ version(unittest) {
  WorksheetFunction struct with the fields filled in accordingly.
  */
 WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
-    WorksheetFunction ret;
-    ret.procedure = ret.functionText = __traits(identifier, F);
-    ret.typeText = "BB"w;
-    ret.macroType = "1"w;
-    return ret;
+    import std.traits: ReturnType, Parameters;
+
+    alias R = ReturnType!F;
+    alias T = Parameters!F;
+
+    static if(!isWorksheetFunction!F) {
+        throw new Exception("Unsupported function type " ~ R.stringof ~ T.stringof ~ " for " ~
+                            __traits(identifier, F).stringof[1 .. $-1]);
+    } else {
+
+        WorksheetFunction ret;
+        ret.procedure = ret.functionText = __traits(identifier, F);
+        ret.typeText = "BB"w;
+        ret.macroType = "1"w;
+        return ret;
+    }
 }
 
-@("double -> double functions with no extra attributes")
+@("getWorksheetFunction for double -> double functions with no extra attributes")
 @safe pure unittest {
     double foo(double) { return 0; }
     getWorksheetFunction!foo.shouldEqual(doubleToDoubleFunction("foo"));
@@ -64,17 +75,27 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     getWorksheetFunction!bar.shouldEqual(doubleToDoubleFunction("bar"));
 }
 
+@("getWorksheetFunction for double -> int functions should fail")
+@safe pure unittest {
+    double foo(int) { return 0; }
+    getWorksheetFunction!foo.shouldThrowWithMessage("Unsupported function type double(int) for foo");
+}
+
+
 // helper template for aliasing
 private alias Identity(alias T) = T;
 
 // whether or not this is a function that can be called from Excel
 private template isWorksheetFunction(alias T) {
+    import std.traits: ReturnType, Parameters;
+    import std.meta: AliasSeq;
+
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
     enum canGetPointerToIt = __traits(compiles, &T);
 
     static if(canGetPointerToIt)
-        enum isWorksheetFunction = isSomeFunction!T;
+        enum isWorksheetFunction = isSomeFunction!T && is(ReturnType!T == double) && is(Parameters!T == AliasSeq!double);
     else
         enum isWorksheetFunction = false;
 }
@@ -92,8 +113,12 @@ WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
 
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
-        static if(isWorksheetFunction!moduleMember)
-            ret ~= getWorksheetFunction!moduleMember;
+        static if(isWorksheetFunction!moduleMember) {
+            try
+                ret ~= getWorksheetFunction!moduleMember;
+            catch(Exception ex)
+                assert(0); //can't happen
+        }
     }
 
     return ret;
