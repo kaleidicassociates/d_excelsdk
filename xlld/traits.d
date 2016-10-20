@@ -26,10 +26,10 @@ version(unittest) {
 
     // return a WorksheetFunction for a double function(double) with no
     // optional arguments
-    WorksheetFunction doubleToDoubleFunction(wstring name) @safe pure nothrow {
+    WorksheetFunction makeWorksheetFunction(wstring name, wstring typeText) @safe pure nothrow {
         WorksheetFunction func = {
           procedure: name,
-          typeText: "BB"w,
+          typeText: typeText,
           functionText: name,
           argumentText: ""w,
           macroType: "1"w,
@@ -41,42 +41,19 @@ version(unittest) {
         };
 
         return func;
+    }
+
+    WorksheetFunction doubleToDoubleFunction(wstring name) @safe pure nothrow {
+        return makeWorksheetFunction(name, "BB"w);
     }
 
     WorksheetFunction FP12ToDoubleFunction(wstring name) @safe pure nothrow {
-        WorksheetFunction func = {
-          procedure: name,
-          typeText: "BK%"w,
-          functionText: name,
-          argumentText: ""w,
-          macroType: "1"w,
-          category: ""w,
-          shortcutText: ""w,
-          helpTopic: ""w,
-          functionHelp: ""w,
-          argumentHelp: [],
-        };
-
-        return func;
+        return makeWorksheetFunction(name, "BK%"w);
     }
 
     WorksheetFunction operToOperFunction(wstring name) @safe pure nothrow {
-        WorksheetFunction func = {
-          procedure: name,
-          typeText: "UU"w,
-          functionText: name,
-          argumentText: ""w,
-          macroType: "1"w,
-          category: ""w,
-          shortcutText: ""w,
-          helpTopic: ""w,
-          functionHelp: ""w,
-          argumentHelp: [],
-        };
-
-        return func;
+        return makeWorksheetFunction(name, "UU"w);
     }
-
 }
 
 /**

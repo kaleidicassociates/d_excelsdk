@@ -270,7 +270,6 @@ extern(C)int Excel4(int xlfn, LPXLOPER operRes, int count,... );  //_cdecl
 		VAL val;
 		DWORD xltype;
 	}
-	pragma(msg, XLOPER12.VAL.FLOW.sizeof);
 	alias LPXLOPER12=XLOPER12*;
 
 	/**
