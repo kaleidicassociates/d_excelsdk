@@ -68,21 +68,21 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 private alias Identity(alias T) = T;
 
 // whether or not this is a function that can be called from Excel
-private template isExcelFunction(alias T) {
+private template isWorksheetFunction(alias T) {
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
     enum canGetPointerToIt = __traits(compiles, &T);
 
     static if(canGetPointerToIt)
-        enum isExcelFunction = isSomeFunction!T;
+        enum isWorksheetFunction = isSomeFunction!T;
     else
-        enum isExcelFunction = false;
+        enum isWorksheetFunction = false;
 }
 
 /**
  Gets all Excel-callable functions in a given module
  */
-WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
+WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
     mixin(`import ` ~ moduleName ~ `;`);
     alias module_ = Identity!(mixin(moduleName));
 
@@ -92,16 +92,16 @@ WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
 
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
-        static if(isExcelFunction!moduleMember)
+        static if(isWorksheetFunction!moduleMember)
             ret ~= getWorksheetFunction!moduleMember;
     }
 
     return ret;
 }
 
-@("getExcelFunctions on test_module")
+@("getWorksheetFunctions on test_module")
 @safe pure unittest {
-    getModuleExcelFunctions!"xlld.test_module".shouldEqual(
+    getModuleWorksheetFunctions!"xlld.test_module".shouldEqual(
         [
             doubleToDoubleFunction("FuncMulByTwo"),
         ]
@@ -111,11 +111,11 @@ WorksheetFunction[] getModuleExcelFunctions(string moduleName)() {
 /**
  Gets all Excel-callable functions from the given modules
  */
-WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
+WorksheetFunction[] getAllWorksheetFunctions(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
     WorksheetFunction[] ret;
 
     foreach(module_; Modules) {
-        ret ~= getModuleExcelFunctions!module_;
+        ret ~= getModuleWorksheetFunctions!module_;
     }
 
     return ret;
@@ -128,9 +128,9 @@ WorksheetFunction[] getAllExcelFunctions(Modules...)() if(allSatisfy!(isSomeStri
  fails to actually make it an extern(C) function.
  */
 string implGetWorksheetFunctionsString(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
+    import std.array: join;
 
     string modulesString() {
-        import std.array: join;
 
         string[] modules;
         foreach(module_; Modules) {
@@ -139,7 +139,12 @@ string implGetWorksheetFunctionsString(Modules...)() if(allSatisfy!(isSomeString
         return modules.join(", ");
     }
 
-    return `extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow { return getAllExcelFunctions!(` ~ modulesString ~ `); }`;
+    return
+        [
+            `extern(C) WorksheetFunction[] getWorksheetFunctions() @safe pure nothrow {`,
+            `    return getAllWorksheetFunctions!(` ~ modulesString ~ `);`,
+            `}`,
+        ].join("\n");
 }
 
 @("template mixin for getWorkSheetFunctions for test_module")
