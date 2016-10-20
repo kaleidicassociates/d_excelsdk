@@ -1,0 +1,12 @@
+dist: trusty
+language: d
+sudo: required
+
+d:
+  - dmd
+
+services: docker
+script: make -j`grep -c '^process' /proc/cpuinfo` all
+
+notifications:
+  slack: kaleidic:6grLjjD8iJiZxvnEnQhCvr48

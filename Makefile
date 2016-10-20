@@ -18,4 +18,7 @@ bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/test_module.d
 	dmd -c -of$@ -I~/.dub/packages/unit-threaded-0.6.30/unit-threaded/source -unittest -g -debug $^
 
 $(LIB_UT): ~/.dub/packages/unit-threaded-0.6.30/unit-threaded/dub.json
-	dub fetch unit-threaded --version=0.6.30; cd $^; dub build
+	cd $(dir $^); dub build
+
+~/.dub/packages/unit-threaded-0.6.30/unit-threaded/dub.json:
+	dub fetch unit-threaded --version=0.6.30
