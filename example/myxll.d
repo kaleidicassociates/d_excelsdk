@@ -18,6 +18,44 @@ extern(C) export double FuncMulByTwo(double n) {
     return n * 2;
 }
 
+extern(Windows) double FuncAddEverything(LPXLOPER12 arg) {
+    import std.algorithm: fold;
+    return getValues(arg).fold!((a, b) => a + b)(0.0);
+}
+
+// calling this recursively fails miserably, even if it's
+// also extern(Windows). I don't know why
+private double[] getValues(LPXLOPER12 arg) {
+    switch(arg.xltype) {
+
+    case xltypeNum:
+        return [arg.val.num];
+
+    case xltypeSRef:
+        XLOPER12 array;
+        Excel12f(xlCoerce, &array, [arg]);
+        scope(exit) Excel12f(xlFree, null, [&array]);
+
+        double[] ret;
+        const rows = array.val.array.rows;
+        const columns = array.val.array.columns;
+        auto values = array.val.array.lparray[0 .. (rows * columns)];
+
+        foreach(const row; 0 .. rows) {
+            foreach(const col; 0 .. columns) {
+                XLOPER12 val;
+                Excel12f(xlCoerce, &val, [&values[row * columns + col]]);
+                ret ~= val.val.num;
+                Excel12f(xlFree, null, [&val]);
+            }
+        }
+        return ret;
+
+    default:
+        return [-1];
+    }
+}
+
 // extern(Windows) means it has to be explicitly added
 // to the .def file
 // Because of that and the only double -> double reflection functionality,

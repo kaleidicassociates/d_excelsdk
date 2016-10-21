@@ -1,7 +1,8 @@
-LIBRARY "generic32.dll"
+LIBRARY "myxll32.dll"
 DESCRIPTION     'Simple D add-in to Excel'
 EXETYPE		NT
 CODE            PRELOAD DISCARDABLE
 DATA            PRELOAD MULTIPLE
 EXPORTS
                 xlAutoOpen
+                FuncAddEverything
