@@ -1,7 +1,7 @@
 /**
  Only exists to test the module reflection functionality
  */
-module xlld.test_module;
+module xlld.test_xl_funcs;
 
 version(unittest):
 

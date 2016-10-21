@@ -184,9 +184,9 @@ WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
     return ret;
 }
 
-@("getWorksheetFunctions on test_module")
+@("getWorksheetFunctions on test_xl_funcs")
 @safe pure unittest {
-    getModuleWorksheetFunctions!"xlld.test_module".shouldEqual(
+    getModuleWorksheetFunctions!"xlld.test_xl_funcs".shouldEqual(
         [
             doubleToDoubleFunction("FuncMulByTwo"),
             FP12ToDoubleFunction("FuncFP12"),
@@ -234,13 +234,13 @@ string implGetWorksheetFunctionsString(Modules...)() if(allSatisfy!(isSomeString
         ].join("\n");
 }
 
-@("template mixin for getWorkSheetFunctions for test_module")
+@("template mixin for getWorkSheetFunctions for test_xl_funcs")
 unittest {
     import xlld.traits;
     import xlld.worksheet;
 
     // mixin the function here then call it to see if it does what it's supposed to
-    mixin(implGetWorksheetFunctionsString!"xlld.test_module");
+    mixin(implGetWorksheetFunctionsString!"xlld.test_xl_funcs");
     getWorksheetFunctions.shouldEqual(
         [
             doubleToDoubleFunction("FuncMulByTwo"),

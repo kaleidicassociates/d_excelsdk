@@ -15,7 +15,7 @@ test: bin/ut
 bin/ut: $(UT_LIB) bin/ut.o
 	dmd -of$@ $^
 
-bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/test_module.d
+bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/test_xl_funcs.d
 	dmd -c -of$@ -I$(UT_DIR)/source -unittest -g -debug $^
 
 $(UT_LIB): $(UT_SRC)
