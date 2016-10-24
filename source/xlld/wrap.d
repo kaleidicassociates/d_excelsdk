@@ -64,6 +64,7 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
 }
 
 private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
+    import xlld.xl: coerce, free;
     import std.exception: enforce;
     import std.conv: text;
 
@@ -83,10 +84,12 @@ private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
 
     foreach(const row; 0 .. rows) {
         foreach(const col; 0 .. columns) {
-            auto cellVal = values[row * columns + col];
-            enforce(cellVal.xltype == XlType,
-                    text("Unsupported element type in multi: ", cellVal.xltype));
-            ret[row][col] = (&cellVal).fromXlOper!T;
+            auto cellVal = coerce(&values[row * columns + col]);
+            scope(exit) free(&cellVal);
+            if(cellVal.xltype == XlType)
+                ret[row][col] = (&cellVal).fromXlOper!T;
+            else
+                ret[row][col] = T.init;
         }
     }
 

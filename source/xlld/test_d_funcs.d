@@ -7,10 +7,11 @@ module xlld.test_d_funcs;
 
 double FuncAddEverything(double[][] args) {
     import std.algorithm: fold;
+    import std.math: isNaN;
 
     double ret = 0;
     foreach(row; args)
-        ret += row.fold!((a, b) => a + b)(0.0);
+        ret += row.fold!((a, b) => b.isNaN ? 0.0 : a + b)(0.0);
     return ret;
 }
 
