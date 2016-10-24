@@ -213,6 +213,8 @@ private enum invalidXlOperType = 0xdeadbeef;
 template dlangToXlOperInputType(T) {
     static if(is(T == double[][]))
         enum dlangToXlOperInputType = xltypeSRef;
+    else static if(is(T == string[][]))
+        enum dlangToXlOperInputType = xltypeSRef;
     else
         enum dlangToXlOperInputType = invalidXlOperType;
 }
@@ -224,8 +226,44 @@ template dlangToXlOperInputType(T) {
 template dlangToXlOperType(T) {
     static if(is(T == double[][]))
         enum dlangToXlOperType = xltypeMulti;
+    else static if(is(T == string[][]))
+        enum dlangToXlOperType = xltypeMulti;
     else static if(is(T == double))
         enum dlangToXlOperType = xltypeNum;
     else
         enum dlangToXlOperType = invalidXlOperType;
+}
+
+
+string wrapModuleFunctionStr(string moduleStr, string funcName) {
+    import std.array: join;
+    return [
+        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(LPXLOPER12 arg) {`,
+        `    static import ` ~ moduleStr ~ `;`,
+        `    import xlld.xl: free, convertInput;`,
+        `    import std.traits: Parameters;`,
+        `    import std.conv: text;`,
+        `    alias wrappedFunc = ` ~ moduleStr ~ `.` ~ funcName ~ `;`,
+
+        `    static assert(Parameters!wrappedFunc.length == 1,`,
+        `                  text("Illegal number of parameters, only 1 supported, not ",`,
+        `                       Parameters!wrappedFunc.length));`,
+        `    alias InputType = Parameters!wrappedFunc[0];`,
+        `    static XLOPER12 ret;`,
+        `    // must 1st convert argument to the "real" type.`,
+        `    // 2D arrays are passed in as SRefs, for instance`,
+        `    XLOPER12 realArg;`,
+        `    try {`,
+        `        realArg = convertInput!InputType(arg);`,
+        `    } catch(Exception ex) {`,
+        `        ret.xltype = xltypeErr;`,
+        `        ret.val.err = -1;`,
+        `        return &ret;`,
+        `    }`,
+        `    scope(exit) free(&realArg);`,
+
+        `    ret = toXlOper(wrappedFunc(fromXlOper!InputType(&realArg)));`,
+        `    return &ret;`,
+        `}`,
+    ].join("\n");
 }

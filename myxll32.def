@@ -6,3 +6,4 @@ DATA            PRELOAD MULTIPLE
 EXPORTS
                 xlAutoOpen
                 FuncAddEverything
+                FuncAllLengths
