@@ -124,7 +124,7 @@ private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, doub
 
 string wrapWorksheetFunctionsString(string moduleName)() {
     import std.array: join;
-    import std.traits: Parameters;
+    import std.traits: ReturnType, Parameters;
 
     mixin(`import ` ~ moduleName ~ `;`);
     alias module_ = Identity!(mixin(moduleName));
@@ -139,7 +139,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
             ret ~=
                 [
                     `static import ` ~ moduleName ~ `;`,
-                    `extern(Windows) double ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
+                    `extern(Windows) ` ~ ReturnType!moduleMember.stringof ~ ` ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
                     `    return ` ~ moduleName ~ `.` ~ moduleMemberStr ~ `(arg.fromXlOper!` ~ Parameters!moduleMember.stringof ~ `);`
                     `}`,
                     ``,
@@ -159,6 +159,17 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
     arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
     FuncAddEverything(&arg).shouldEqual(28);
+}
+
+@("Wrap double[][] -> double[][]]]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+
+    auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
+    FuncTripleEverything(&arg).shouldEqual([[3, 6, 9, 12], [33, 36, 39, 42]]);
+
+    arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
+    FuncTripleEverything(&arg).shouldEqual([[0, 3, 6, 9], [12, 15, 18, 21]]);
 }
 
 

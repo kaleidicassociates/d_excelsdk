@@ -18,6 +18,18 @@ double FuncAddEverything(double[][] args) {
     return ret;
 }
 
+double[][] FuncTripleEverything(double[][] args) {
+    double[][] ret;
+    ret.length = args.length;
+    foreach(i; 0 .. args.length) {
+        ret[i].length = args[i].length;
+        foreach(j; 0 .. args[i].length)
+            ret[i][j] = args[i][j] * 3;
+    }
+
+    return ret;
+}
+
 double FuncAllLengths(string[][] args) {
     import std.algorithm: fold;
 
