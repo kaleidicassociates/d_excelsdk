@@ -141,24 +141,39 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
 // helper template for aliasing
 private alias Identity(alias T) = T;
 
-// whether or not this is a function that can be called from Excel
-private template isWorksheetFunction(alias T) {
-    import std.traits: ReturnType, Parameters;
+
+// whether or not this is a function that has the "right" types
+template isSupportedFunction(alias F, T...) {
+    import std.traits: isSomeFunction, ReturnType, Parameters;
     import std.meta: AliasSeq, allSatisfy;
 
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
-    enum canGetPointerToIt = __traits(compiles, &T);
-    enum isSupportedType(U) = is(U == double) || is(U == FP12*) || is(U == LPXLOPER12);
+    enum canGetPointerToIt = __traits(compiles, &F);
+    enum isOneOfSupported(U) = isSupportedType!(U, T);
 
     static if(canGetPointerToIt)
-        enum isWorksheetFunction =
-            isSomeFunction!T &&
-            isSupportedType!(ReturnType!T) &&
-            allSatisfy!(isSupportedType, Parameters!T);
+        enum isSupportedFunction =
+            isSomeFunction!F &&
+            isOneOfSupported!(ReturnType!F) &&
+            allSatisfy!(isOneOfSupported, Parameters!F);
     else
-        enum isWorksheetFunction = false;
+        enum isSupportedFunction = false;
 }
+
+private template isSupportedType(T, U...) {
+    static if(U.length == 0)
+        enum isSupportedType = false;
+    else
+        enum isSupportedType = is(T == U[0]) || isSupportedType!(T, U[1..$]);
+}
+
+static assert(isSupportedType!(int, int, int));
+static assert(!isSupportedType!(int, double, string));
+
+
+// whether or not this is a function that can be called from Excel
+private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, FP12*, LPXLOPER12);
 
 /**
  Gets all Excel-callable functions in a given module

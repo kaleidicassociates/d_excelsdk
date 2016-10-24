@@ -1,6 +1,7 @@
 module xlld.newwrap;
 
 import xlld.xlcall;
+import xlld.traits: isSupportedFunction;
 
 version(unittest) {
     import unit_threaded;
@@ -119,27 +120,7 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
 }
 
 
-// helper template for aliasing
-private alias Identity(alias T) = T;
-
-private template isWorksheetFunction(alias T) {
-    import std.traits: isSomeFunction, ReturnType, Parameters;
-    import std.meta: AliasSeq, allSatisfy;
-
-    // trying to get a pointer to something is a good way of making sure we can
-    // attempt to evaluate `isSomeFunction` - it's not always possible
-    enum canGetPointerToIt = __traits(compiles, &T);
-    enum isSupportedType(U) = is(U == double) || is(U == double[][]) || is(U == string[][]);
-
-    static if(canGetPointerToIt)
-        enum isWorksheetFunction =
-            isSomeFunction!T &&
-            isSupportedType!(ReturnType!T) &&
-            allSatisfy!(isSupportedType, Parameters!T);
-    else
-        enum isWorksheetFunction = false;
-
-}
+private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, double[][], string[][]);
 
 string wrapWorksheetFunctionsString(string moduleName)() {
     import std.array: join;
@@ -171,7 +152,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap double[][] -> double")
 @system unittest {
-     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
     FuncAddEverything(&arg).shouldEqual(60);
