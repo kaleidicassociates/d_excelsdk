@@ -137,15 +137,22 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     return ret;
 }
 
+version(unittest) {
+    // automatically converts from oper to compare with a D type
+    void shouldEqualDlang(T, U)(T actual, U expected, string file = __FILE__, ulong line = __LINE__) {
+        actual.fromXlOper!U.shouldEqual(expected);
+    }
+}
+
 @("Wrap double[][] -> double")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
-    FuncAddEverything(&arg).fromXlOper!double.shouldEqual(60);
+    FuncAddEverything(&arg).shouldEqualDlang(60.0);
 
     arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
-    FuncAddEverything(&arg).fromXlOper!double.shouldEqual(28);
+    FuncAddEverything(&arg).shouldEqualDlang(28.0);
 }
 
 @("Wrap double[][] -> double[][]")
@@ -153,10 +160,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
-    FuncTripleEverything(&arg).fromXlOper!(double[][]).shouldEqual([[3, 6, 9, 12], [33, 36, 39, 42]]);
+    FuncTripleEverything(&arg).shouldEqualDlang(cast(double[][])[[3, 6, 9, 12], [33, 36, 39, 42]]);
 
     arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
-    FuncTripleEverything(&arg).fromXlOper!(double[][]).shouldEqual([[0, 3, 6, 9], [12, 15, 18, 21]]);
+    FuncTripleEverything(&arg).shouldEqualDlang(cast(double[][])[[0, 3, 6, 9], [12, 15, 18, 21]]);
 }
 
 
@@ -165,10 +172,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncAllLengths(&arg).fromXlOper!(double).shouldEqual(29.0);
+    FuncAllLengths(&arg).shouldEqualDlang(29.0);
 
     arg = toXlOper([["", "", "", ""], ["", "", "", ""]]);
-    FuncAllLengths(&arg).fromXlOper!(double).shouldEqual(0.0);
+    FuncAllLengths(&arg).shouldEqualDlang(0.0);
 }
 
 @("Wrap string[][] -> double[][]")
@@ -176,10 +183,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncLengths(&arg).fromXlOper!(double[][]).shouldEqual([[3, 3, 3, 4], [4, 4, 4, 4]]);
+    FuncLengths(&arg).shouldEqualDlang(cast(double[][])[[3, 3, 3, 4], [4, 4, 4, 4]]);
 
     arg = toXlOper([["", "", ""], ["", "", "huh"]]);
-    FuncLengths(&arg).fromXlOper!(double[][]).shouldEqual([[0, 0, 0], [0, 0, 3]]);
+    FuncLengths(&arg).shouldEqualDlang(cast(double[][])[[0, 0, 0], [0, 0, 3]]);
 }
 
 @("Wrap string[][] -> string[][]")
@@ -187,6 +194,6 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncBob(&arg).fromXlOper!(string[][]).shouldEqual([["foobob", "barbob", "bazbob", "quuxbob"],
-                                                       ["totobob", "titibob", "tutubob", "tetebob"]]);
+    FuncBob(&arg).shouldEqualDlang([["foobob", "barbob", "bazbob", "quuxbob"],
+                                    ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
