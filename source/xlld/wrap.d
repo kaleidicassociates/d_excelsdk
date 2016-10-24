@@ -113,7 +113,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(`import ` ~ moduleName ~ `;`);
     alias module_ = Identity!(mixin(moduleName));
 
-    string ret;
+    string ret = `static import ` ~ moduleName ~ ";\n\n";
 
     foreach(moduleMemberStr; __traits(allMembers, module_)) {
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
@@ -122,8 +122,8 @@ string wrapWorksheetFunctionsString(string moduleName)() {
             immutable prmTypeStr = Parameters!moduleMember.stringof;
             ret ~=
                 [
-                    `static import ` ~ moduleName ~ `;`,
                     `extern(Windows) LPXLOPER12 ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
+                    `    static import ` ~ moduleName ~ `;`,
                     `    static XLOPER12 ret;`,
                     `    ret = ` ~ moduleName ~ `.` ~ moduleMemberStr ~
                     `(arg.fromXlOper!` ~ prmTypeStr ~ `).toXlOper;`,

@@ -5,10 +5,6 @@
  */
 module xlld.test_d_funcs;
 
-version(unittest):
-
-import unit_threaded;
-
 double FuncAddEverything(double[][] args) {
     import std.algorithm: fold;
 

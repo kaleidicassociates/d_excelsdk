@@ -1882,6 +1882,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 		break;
 	case xltypeInt:
 		pxloper12.val.w = pxloper.val.w;
+                break;
 	case xltypeStr:
 		ast = pxloper.val.str;
 		if (ast is null)
