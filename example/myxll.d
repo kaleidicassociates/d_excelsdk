@@ -13,6 +13,7 @@ import xlld;
 
 extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
     static import xlld.test_d_funcs;
+    import xlld.xl: coerce, free;
     import std.traits: ReturnType, Parameters;
     import std.conv: text;
 
@@ -31,9 +32,8 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
         return &ret;
     }
 
-    XLOPER12 realArg;
-    Excel12f(xlCoerce, &realArg, [arg]);
-    scope(exit) Excel12f(xlFree, null, [&realArg]);
+    auto realArg = coerce(arg);
+    scope(exit) free(&realArg);
 
     if(realArg.xltype != dlangToXlOperType!InputType) {
         ret.xltype = xltypeErr;
@@ -54,9 +54,8 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
 
     foreach(const row; 0 .. rows) {
         foreach(const col; 0 .. columns) {
-            XLOPER12 val;
-            Excel12f(xlCoerce, &val, [&realArg.val.array.lparray[row * columns + col]]);
-            scope(exit) Excel12f(xlFree, null, [&val]);
+            auto val = coerce(&realArg.val.array.lparray[row * columns + col]);
+            scope(exit) free(&val);
 
             if(val.xltype == xltypeNum)
                 forwardArg[row][col] = val.val.num;
