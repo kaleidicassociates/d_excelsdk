@@ -38,3 +38,16 @@ double FuncAllLengths(string[][] args) {
         ret += row.fold!((a, b) => a + b.length)(0.0);
     return ret;
 }
+
+double[][] FuncLengths(string[][] args) {
+    double[][] ret;
+
+    ret.length = args.length;
+    foreach(i; 0 .. args.length) {
+        ret[i].length = args[i].length;
+        foreach(j; 0 .. args[i].length)
+            ret[i][j] = args[i][j].length;
+    }
+
+    return ret;
+}

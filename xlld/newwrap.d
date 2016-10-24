@@ -135,12 +135,14 @@ string wrapWorksheetFunctionsString(string moduleName)() {
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
         static if(isWorksheetFunction!moduleMember) {
-
+            immutable retTypeStr = ReturnType!moduleMember.stringof;
+            immutable prmTypeStr = Parameters!moduleMember.stringof;
             ret ~=
                 [
                     `static import ` ~ moduleName ~ `;`,
-                    `extern(Windows) ` ~ ReturnType!moduleMember.stringof ~ ` ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
-                    `    return ` ~ moduleName ~ `.` ~ moduleMemberStr ~ `(arg.fromXlOper!` ~ Parameters!moduleMember.stringof ~ `);`
+                    `extern(Windows) ` ~ retTypeStr ~ ` ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
+                    `    return ` ~ moduleName ~ `.` ~ moduleMemberStr ~
+                    `(arg.fromXlOper!` ~ prmTypeStr ~ `);`
                     `}`,
                     ``,
                 ].join("\n");
@@ -182,4 +184,15 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
     arg = toXlOper([["", "", "", ""], ["", "", "", ""]]);
     FuncAllLengths(&arg).shouldEqual(0);
+}
+
+@("Wrap string[][] -> double[][]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+
+    auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
+    FuncLengths(&arg).shouldEqual([[3, 3, 3, 4], [4, 4, 4, 4]]);
+
+    arg = toXlOper([["", "", ""], ["", "", "huh"]]);
+    FuncLengths(&arg).shouldEqual([[0, 0, 0], [0, 0, 3]]);
 }
