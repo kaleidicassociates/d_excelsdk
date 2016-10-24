@@ -3,7 +3,8 @@
  */
 module xlld.xl;
 
-import xlld;
+import xlld.xlcall;
+import xlld.wrap;
 
 version(unittest) {
     XLOPER12 coerce(LPXLOPER12 oper) {
