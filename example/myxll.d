@@ -13,7 +13,7 @@ import xlld;
 
 extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
     static import xlld.test_d_funcs;
-    import xlld.xl: coerce, free;
+    import xlld.xl: coerce, free, convertInput;
     import std.traits: ReturnType, Parameters;
     import std.conv: text;
 
@@ -26,23 +26,18 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
 
     static XLOPER12 ret;
 
-    if(arg.xltype != dlangToXlOperInputType!InputType) {
+    // must 1st convert argument to the "real" type.
+    // 2D arrays are passed in as SRefs, for instance
+    XLOPER12 realArg;
+    try {
+        realArg = convertInput!InputType(arg);
+    } catch(Exception ex) {
         ret.xltype = xltypeErr;
         ret.val.err = -1;
         return &ret;
     }
 
-    auto realArg = coerce(arg);
     scope(exit) free(&realArg);
-
-    if(realArg.xltype != dlangToXlOperType!InputType) {
-        ret.xltype = xltypeErr;
-        ret.val.err = -1;
-        return &ret;
-    }
-
-    ret.xltype = dlangToXlOperType!(ReturnType!wrappedFunc);
-    ret.val.num = 0;
 
     const rows = realArg.val.array.rows;
     const columns = realArg.val.array.columns;
@@ -69,6 +64,7 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
 
     return &ret;
 }
+
 
 
 mixin(implGetWorksheetFunctionsString!(__MODULE__));
