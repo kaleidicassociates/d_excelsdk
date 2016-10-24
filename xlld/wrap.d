@@ -106,6 +106,7 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
 private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, double[][], string[][]);
 
 string wrapWorksheetFunctionsString(string moduleName)() {
+    import xlld.traits: Identity;
     import std.array: join;
     import std.traits: ReturnType, Parameters;
 
