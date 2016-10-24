@@ -31,6 +31,7 @@ version(unittest) {
 
     }
 } else {
+    import xlld.framework;
     XLOPER12 coerce(LPXLOPER12 oper) {
         XLOPER12 coerced;
         Excel12f(xlCoerce, &coerced, [oper]);
