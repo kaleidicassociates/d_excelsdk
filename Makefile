@@ -15,7 +15,7 @@ test: bin/ut
 bin/ut: $(UT_LIB) bin/ut.o
 	dmd -of$@ $^
 
-bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/xlcall.d xlld/newwrap.d xlld/test_xl_funcs.d xlld/test_d_funcs.d
+bin/ut.o: bin/ut.d xlld/worksheet.d xlld/traits.d xlld/xlcall.d xlld/wrap.d xlld/test_xl_funcs.d xlld/test_d_funcs.d
 	dmd -c -of$@ -I$(UT_DIR)/source -unittest -g -debug $^
 
 $(UT_LIB): $(UT_SRC)

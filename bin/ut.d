@@ -10,7 +10,7 @@ int main(string[] args)
     return runTests!(
                      "xlld.worksheet",
                      "xlld.traits",
-                     "xlld.newwrap",
+                     "xlld.wrap",
                      )
                      (args);
 }
