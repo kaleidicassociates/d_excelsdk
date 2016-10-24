@@ -47,17 +47,26 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
     const rows = realArg.val.array.rows;
     const columns = realArg.val.array.columns;
 
+    // the type expected by the D function being wrapped
+    InputType forwardArg;
+    forwardArg.length = rows;
+    foreach(ref col; forwardArg) col.length = columns;
+
     foreach(const row; 0 .. rows) {
         foreach(const col; 0 .. columns) {
             XLOPER12 val;
             Excel12f(xlCoerce, &val, [&realArg.val.array.lparray[row * columns + col]]);
             scope(exit) Excel12f(xlFree, null, [&val]);
 
-            if(val.xltype == xltypeNum) {
-                ret.val.num += val.val.num;
-            }
+            if(val.xltype == xltypeNum)
+                forwardArg[row][col] = val.val.num;
+            else
+                forwardArg[row][col] = 0;
         }
     }
+
+    wrappedFunc(forwardArg);
+    ret = toXlOper(wrappedFunc(forwardArg));
 
     return &ret;
 }
