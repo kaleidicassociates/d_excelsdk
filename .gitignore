@@ -4,3 +4,8 @@
 *.map
 *.exp
 bin
+.dub
+docs.json
+__dummy.html
+*.o
+d_excelsdk

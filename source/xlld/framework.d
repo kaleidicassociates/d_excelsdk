@@ -70,6 +70,8 @@
 */
 module xlld.framework;
 
+version(Windows):
+
 debug=0;
 
 import core.sys.windows.windows;
@@ -111,7 +113,7 @@ static if(false) // debug
 
 	void  debugPrintf(LPSTR lpFormat, ...) // cdecl
 	{
-		char rgch[256];
+		char[256] rgch;
 		va_list argList;
 
 		va_start(argList,lpFormat);

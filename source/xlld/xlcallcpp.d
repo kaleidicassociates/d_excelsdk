@@ -18,6 +18,8 @@ import core.sys.windows.windows;
 import xlld.xlcall;
 import core.vararg;
 
+version(Windows):
+
 /**
    Excel 12 entry points backwards compatible with Excel 11
 
