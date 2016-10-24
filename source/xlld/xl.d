@@ -8,7 +8,23 @@ import xlld.wrap;
 
 version(unittest) {
     XLOPER12 coerce(LPXLOPER12 oper) {
-        return XLOPER12();
+
+        XLOPER12 ret;
+        ret = *oper;
+
+        switch(oper.xltype) {
+
+        case xltypeSRef:
+            ret.xltype = xltypeMulti;
+            return ret;
+
+        case xltypeNum:
+            ret.xltype = xltypeNum;
+            return ret;
+
+        default:
+            return ret;
+        }
     }
 
     void free(LPXLOPER12 oper) {
