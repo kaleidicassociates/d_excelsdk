@@ -7,10 +7,10 @@ import xlld;
 
 version(unittest) {
     XLOPER12 coerce(LPXLOPER12 oper) {
-
+        return XLOPER12();
     }
 
-    void free(LPXOPER12 oper) {
+    void free(LPXLOPER12 oper) {
 
     }
 } else {

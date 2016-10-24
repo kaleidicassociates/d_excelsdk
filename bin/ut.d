@@ -11,6 +11,7 @@ int main(string[] args)
                      "xlld.worksheet",
                      "xlld.traits",
                      "xlld.wrap",
+                     "xlld.xl",
                      )
                      (args);
 }
