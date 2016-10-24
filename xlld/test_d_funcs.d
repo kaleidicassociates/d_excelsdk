@@ -18,7 +18,11 @@ double FuncAddEverything(double[][] args) {
     return ret;
 }
 
-unittest {
-    FuncAddEverything([[1, 2], [3, 4]]).shouldEqual(10);
-    FuncAddEverything([]).shouldEqual(0);
+double FuncAllLengths(string[][] args) {
+    import std.algorithm: fold;
+
+    double ret = 0;
+    foreach(row; args)
+        ret += row.fold!((a, b) => a + b.length)(0.0);
+    return ret;
 }
