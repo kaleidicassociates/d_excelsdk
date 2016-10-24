@@ -13,39 +13,49 @@ import xlld;
 
 extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
     static import xlld.test_d_funcs;
-    static XLOPER12 ret;
-    static XLOPER12[100] opers;
+    import std.traits: ReturnType, Parameters;
+    import std.conv: text;
 
-    if(arg.xltype != xltypeSRef) {
+    alias wrappedFunc = xlld.test_d_funcs.FuncAddEverything;
+    alias InputType = Parameters!wrappedFunc[0];
+
+    static assert(Parameters!wrappedFunc.length == 1,
+                  text("Illegal number of parameters, only 1 supported, not ",
+                       Parametes!wrappedFunc.length));
+
+    static XLOPER12 ret;
+
+    if(arg.xltype != dlangToXlOperInputType!InputType) {
         ret.xltype = xltypeErr;
         ret.val.err = -1;
         return &ret;
     }
 
-    XLOPER12 array;
-    Excel12f(xlCoerce, &array, [arg]);
-    scope(exit) Excel12f(xlFree, null, [&array]);
+    XLOPER12 realArg;
+    Excel12f(xlCoerce, &realArg, [arg]);
+    scope(exit) Excel12f(xlFree, null, [&realArg]);
 
-    const rows = array.val.array.rows;
-    const columns = array.val.array.columns;
-    auto values = array.val.array.lparray[0 .. (rows * columns)];
+    if(realArg.xltype != dlangToXlOperType!InputType) {
+        ret.xltype = xltypeErr;
+        ret.val.err = -1;
+        return &ret;
+    }
 
-    ret.xltype = xltypeNum;
+    ret.xltype = dlangToXlOperType!(ReturnType!wrappedFunc);
     ret.val.num = 0;
+
+    const rows = realArg.val.array.rows;
+    const columns = realArg.val.array.columns;
 
     foreach(const row; 0 .. rows) {
         foreach(const col; 0 .. columns) {
             XLOPER12 val;
-            Excel12f(xlCoerce, &val, [&values[row * columns + col]]);
+            Excel12f(xlCoerce, &val, [&realArg.val.array.lparray[row * columns + col]]);
             scope(exit) Excel12f(xlFree, null, [&val]);
 
-            if(val.xltype != xltypeNum) {
-                ret.xltype = xltypeErr;
-                ret.val.err = -1;
-                return &ret;
+            if(val.xltype == xltypeNum) {
+                ret.val.num += val.val.num;
             }
-
-            ret.val.num += val.val.num;
         }
     }
 

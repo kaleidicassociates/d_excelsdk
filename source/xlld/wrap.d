@@ -197,3 +197,32 @@ version(unittest) {
     FuncBob(&arg).shouldEqualDlang([["foobob", "barbob", "bazbob", "quuxbob"],
                                     ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
+
+private enum invalidXlOperType = 0xdeadbeef;
+
+/**
+ Maps a D type to an integer xltype in XLOPER12 that would
+ get passed in by Excel. This template exists because the values
+ that get passed in don't immediately correspond to what would
+ be expected. For instance, an xltypeMulti gets passed in as
+ an xltypeSRef that must be _coerced_ to an xltypeMulti
+ */
+template dlangToXlOperInputType(T) {
+    static if(is(T == double[][]))
+        enum dlangToXlOperInputType = xltypeSRef;
+    else
+        enum dlangToXlOperInputType = invalidXlOperType;
+}
+
+/**
+ Maps a D type to an integer xltype in XLOPER12 that would
+ get coerced to after Excel passes it in as input
+ */
+template dlangToXlOperType(T) {
+    static if(is(T == double[][]))
+        enum dlangToXlOperType = xltypeMulti;
+    else static if(is(T == double))
+        enum dlangToXlOperType = xltypeNum;
+    else
+        enum dlangToXlOperType = invalidXlOperType;
+}
