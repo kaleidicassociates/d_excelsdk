@@ -13,17 +13,17 @@ import xlld;
 
 extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
     static import xlld.test_d_funcs;
-    import xlld.xl: coerce, free, convertInput;
-    import std.traits: ReturnType, Parameters;
+    import xlld.xl: free, convertInput;
+    import std.traits: Parameters;
     import std.conv: text;
 
     alias wrappedFunc = xlld.test_d_funcs.FuncAddEverything;
-    alias InputType = Parameters!wrappedFunc[0];
 
     static assert(Parameters!wrappedFunc.length == 1,
                   text("Illegal number of parameters, only 1 supported, not ",
                        Parameters!wrappedFunc.length));
 
+    alias InputType = Parameters!wrappedFunc[0];
     static XLOPER12 ret;
 
     // must 1st convert argument to the "real" type.
@@ -39,15 +39,7 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
 
     scope(exit) free(&realArg);
 
-    const rows = realArg.val.array.rows;
-    const columns = realArg.val.array.columns;
-
-    // the type expected by the D function being wrapped
-    auto forwardArg = fromXlOper!InputType(&realArg);
-
-    wrappedFunc(forwardArg);
-    ret = toXlOper(wrappedFunc(forwardArg));
-
+    ret = toXlOper(wrappedFunc(fromXlOper!InputType(&realArg)));
     return &ret;
 }
 
