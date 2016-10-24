@@ -6,7 +6,3 @@ DATA            PRELOAD MULTIPLE
 EXPORTS
                 xlAutoOpen
                 FuncAddEverything
-                FuncTripleEverything
-                FuncAllLengths
-                FuncLengths
-                FuncBob
