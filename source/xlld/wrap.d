@@ -256,3 +256,12 @@ string wrapModuleFunctionStr(string moduleName, string funcName) {
         `}`,
     ].join("\n");
 }
+
+
+string wrapAll(string moduleName, string originalModule = __MODULE__)() {
+    import xlld.traits: implGetWorksheetFunctionsString;
+    return
+        wrapWorksheetFunctionsString!moduleName ~
+        "\n" ~
+        implGetWorksheetFunctionsString!originalModule;
+}
