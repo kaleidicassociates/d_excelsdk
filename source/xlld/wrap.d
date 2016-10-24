@@ -122,18 +122,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
         static if(isWorksheetFunction!moduleMember) {
-            immutable prmTypeStr = Parameters!moduleMember.stringof;
-            ret ~=
-                [
-                    `extern(Windows) LPXLOPER12 ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
-                    `    static import ` ~ moduleName ~ `;`,
-                    `    static XLOPER12 ret;`,
-                    `    ret = ` ~ moduleName ~ `.` ~ moduleMemberStr ~
-                    `(arg.fromXlOper!` ~ prmTypeStr ~ `).toXlOper;`,
-                    `    return &ret;`,
-                    `}`,
-                    ``,
-                ].join("\n");
+            ret ~= wrapModuleFunctionStr(moduleName, moduleMemberStr);
         }
     }
 
@@ -235,15 +224,15 @@ template dlangToXlOperType(T) {
 }
 
 
-string wrapModuleFunctionStr(string moduleStr, string funcName) {
+string wrapModuleFunctionStr(string moduleName, string funcName) {
     import std.array: join;
     return [
         `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(LPXLOPER12 arg) {`,
-        `    static import ` ~ moduleStr ~ `;`,
+        `    static import ` ~ moduleName ~ `;`,
         `    import xlld.xl: free, convertInput;`,
         `    import std.traits: Parameters;`,
         `    import std.conv: text;`,
-        `    alias wrappedFunc = ` ~ moduleStr ~ `.` ~ funcName ~ `;`,
+        `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
 
         `    static assert(Parameters!wrappedFunc.length == 1,`,
         `                  text("Illegal number of parameters, only 1 supported, not ",`,

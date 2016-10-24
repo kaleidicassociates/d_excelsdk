@@ -9,10 +9,5 @@
 module example.myxll;
 
 import xlld;
-//mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
-
-mixin(wrapModuleFunctionStr("xlld.test_d_funcs", "FuncAddEverything"));
-mixin(wrapModuleFunctionStr("xlld.test_d_funcs", "FuncAllLengths"));
-
-
+mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 mixin(implGetWorksheetFunctionsString!(__MODULE__));
