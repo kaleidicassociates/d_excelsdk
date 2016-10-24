@@ -17,6 +17,7 @@ XLOPER12 toXlOper(T)(T val) if(is(T == double)) {
 XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
     import std.conv: to;
 
+    // the first wchar is the string length
     auto wval = val.to!wstring;
     wval = [cast(immutable wchar)val.length] ~ wval;
 
@@ -50,45 +51,26 @@ XLOPER12 toXlOper(T)(T[][] values) {
     return ret;
 }
 
+auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
+    return val.val.num;
+}
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double[][])) {
-    import std.exception: enforce;
-    import std.conv: text;
-
-    enforce(val.xltype == xltypeMulti,
-            text("Cannot convert XL oper of type ", val.xltype));
-
-    double[][] ret;
-
-    const rows = val.val.array.rows;
-    const columns = val.val.array.columns;
-
-    ret.length = rows;
-    foreach(ref col; ret)
-        col.length = columns;
-
-    auto values = val.val.array.lparray[0 .. (rows * columns)];
-
-    foreach(const row; 0 .. rows) {
-        foreach(const col; 0 .. columns) {
-            auto cellVal = values[row * columns + col];
-            enforce(cellVal.xltype == xltypeNum,
-                    text("Unsupported element type in multi: ", cellVal.xltype));
-            ret[row][col] = cellVal.val.num;
-        }
-    }
-
-    return ret;
+    return val.fromXlOperMulti!(double, xltypeNum);
 }
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
+    return val.fromXlOperMulti!(string, xltypeStr);
+}
+
+private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
     import std.exception: enforce;
     import std.conv: text;
 
     enforce(val.xltype == xltypeMulti,
             text("Cannot convert XL oper of type ", val.xltype));
 
-    string[][] ret;
+    T[][] ret;
 
     const rows = val.val.array.rows;
     const columns = val.val.array.columns;
@@ -102,14 +84,15 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
     foreach(const row; 0 .. rows) {
         foreach(const col; 0 .. columns) {
             auto cellVal = values[row * columns + col];
-            enforce(cellVal.xltype == xltypeStr,
+            enforce(cellVal.xltype == XlType,
                     text("Unsupported element type in multi: ", cellVal.xltype));
-            ret[row][col] = (&cellVal).fromXlOper!string;
+            ret[row][col] = (&cellVal).fromXlOper!T;
         }
     }
 
     return ret;
 }
+
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
     import std.conv: to;
