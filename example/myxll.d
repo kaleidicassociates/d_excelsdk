@@ -21,7 +21,7 @@ extern(Windows) LPXLOPER12 FuncAddEverything(LPXLOPER12 arg) {
 
     static assert(Parameters!wrappedFunc.length == 1,
                   text("Illegal number of parameters, only 1 supported, not ",
-                       Parametes!wrappedFunc.length));
+                       Parameters!wrappedFunc.length));
 
     static XLOPER12 ret;
 
