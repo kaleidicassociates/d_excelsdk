@@ -25,22 +25,26 @@ XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
     return ret;
 }
 
-XLOPER12 multiOper(T)(int rows, int cols, T[] values) {
+XLOPER12 toXlOper(T)(T[][] values) {
     import std.algorithm: map, all;
     import std.array: array;
     import std.exception: enforce;
     import std.conv: text;
 
-    enforce(values.length == rows * cols,
-            text("Mismatched number of rows*cols: (", rows, ", ", cols, ") vs ", values.length));
+    enforce(values.all!(a => a.length == values[0].length),
+            text("# of columns must all be the same and aren't: ", values.map!(a => a.length)));
 
     auto ret = XLOPER12();
     ret.xltype = xltypeMulti;
-    ret.val.array.rows = rows;
-    ret.val.array.columns = cols;
+    ret.val.array.rows = cast(int)values.length;
+    ret.val.array.columns = cast(int)values[0].length;
 
-    auto operValues = values.map!(a => a.toXlOper).array;
-    ret.val.array.lparray = operValues.ptr;
+    XLOPER12[] opers;
+    foreach(row; values)
+        foreach(val; row)
+            opers ~= val.toXlOper;
+
+    ret.val.array.lparray = opers.ptr;
 
     return ret;
 }
@@ -169,10 +173,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 @system unittest {
      mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
-    auto arg = multiOper(2, 4, cast(double[])[1, 2, 3, 4, 11, 12, 13, 14]);
+    auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
     FuncAddEverything(&arg).shouldEqual(60);
 
-    arg = multiOper(2, 4, cast(double[])[0, 1, 2, 3, 4, 5, 6, 7]);
+    arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
     FuncAddEverything(&arg).shouldEqual(28);
 }
 
@@ -181,9 +185,9 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
-    auto arg = multiOper(2, 4, ["foo", "bar", "baz", "quux", "toto", "titi", "tutu", "tete"]);
+    auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
     FuncAllLengths(&arg).shouldEqual(29);
 
-    arg = multiOper(2, 4, ["", "", "", "", "", "", "", ""]);
+    arg = toXlOper([["", "", "", ""], ["", "", "", ""]]);
     FuncAllLengths(&arg).shouldEqual(0);
 }
