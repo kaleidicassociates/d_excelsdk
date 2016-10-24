@@ -146,7 +146,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     FuncAddEverything(&arg).shouldEqual(28);
 }
 
-@("Wrap double[][] -> double[][]]]")
+@("Wrap double[][] -> double[][]")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
@@ -178,4 +178,13 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
     arg = toXlOper([["", "", ""], ["", "", "huh"]]);
     FuncLengths(&arg).shouldEqual([[0, 0, 0], [0, 0, 3]]);
+}
+
+@("Wrap string[][] -> string[][]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+
+    auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
+    FuncBob(&arg).shouldEqual([["foobob", "barbob", "bazbob", "quuxbob"],
+                               ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
