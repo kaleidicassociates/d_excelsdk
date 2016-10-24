@@ -119,14 +119,15 @@ string wrapWorksheetFunctionsString(string moduleName)() {
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
         static if(isWorksheetFunction!moduleMember) {
-            immutable retTypeStr = ReturnType!moduleMember.stringof;
             immutable prmTypeStr = Parameters!moduleMember.stringof;
             ret ~=
                 [
                     `static import ` ~ moduleName ~ `;`,
-                    `extern(Windows) ` ~ retTypeStr ~ ` ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
-                    `    return ` ~ moduleName ~ `.` ~ moduleMemberStr ~
-                    `(arg.fromXlOper!` ~ prmTypeStr ~ `);`
+                    `extern(Windows) LPXLOPER12 ` ~ moduleMemberStr ~ `(LPXLOPER12 arg) {`,
+                    `    static XLOPER12 ret;`,
+                    `    ret = ` ~ moduleName ~ `.` ~ moduleMemberStr ~
+                    `(arg.fromXlOper!` ~ prmTypeStr ~ `).toXlOper;`,
+                    `    return &ret;`,
                     `}`,
                     ``,
                 ].join("\n");
@@ -141,10 +142,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
-    FuncAddEverything(&arg).shouldEqual(60);
+    FuncAddEverything(&arg).fromXlOper!double.shouldEqual(60);
 
     arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
-    FuncAddEverything(&arg).shouldEqual(28);
+    FuncAddEverything(&arg).fromXlOper!double.shouldEqual(28);
 }
 
 @("Wrap double[][] -> double[][]")
@@ -152,10 +153,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
-    FuncTripleEverything(&arg).shouldEqual([[3, 6, 9, 12], [33, 36, 39, 42]]);
+    FuncTripleEverything(&arg).fromXlOper!(double[][]).shouldEqual([[3, 6, 9, 12], [33, 36, 39, 42]]);
 
     arg = toXlOper(cast(double[][])[[0, 1, 2, 3], [4, 5, 6, 7]]);
-    FuncTripleEverything(&arg).shouldEqual([[0, 3, 6, 9], [12, 15, 18, 21]]);
+    FuncTripleEverything(&arg).fromXlOper!(double[][]).shouldEqual([[0, 3, 6, 9], [12, 15, 18, 21]]);
 }
 
 
@@ -164,10 +165,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncAllLengths(&arg).shouldEqual(29);
+    FuncAllLengths(&arg).fromXlOper!(double).shouldEqual(29.0);
 
     arg = toXlOper([["", "", "", ""], ["", "", "", ""]]);
-    FuncAllLengths(&arg).shouldEqual(0);
+    FuncAllLengths(&arg).fromXlOper!(double).shouldEqual(0.0);
 }
 
 @("Wrap string[][] -> double[][]")
@@ -175,10 +176,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncLengths(&arg).shouldEqual([[3, 3, 3, 4], [4, 4, 4, 4]]);
+    FuncLengths(&arg).fromXlOper!(double[][]).shouldEqual([[3, 3, 3, 4], [4, 4, 4, 4]]);
 
     arg = toXlOper([["", "", ""], ["", "", "huh"]]);
-    FuncLengths(&arg).shouldEqual([[0, 0, 0], [0, 0, 3]]);
+    FuncLengths(&arg).fromXlOper!(double[][]).shouldEqual([[0, 0, 0], [0, 0, 3]]);
 }
 
 @("Wrap string[][] -> string[][]")
@@ -186,6 +187,6 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toXlOper([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
-    FuncBob(&arg).shouldEqual([["foobob", "barbob", "bazbob", "quuxbob"],
-                               ["totobob", "titibob", "tutubob", "tetebob"]]);
+    FuncBob(&arg).fromXlOper!(string[][]).shouldEqual([["foobob", "barbob", "bazbob", "quuxbob"],
+                                                       ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
