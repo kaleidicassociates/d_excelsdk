@@ -63,6 +63,11 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
     return val.fromXlOperMulti!(string, xltypeStr);
 }
 
+auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[])) {
+    import std.array: join;
+    return val.fromXlOperMulti!(string, xltypeStr).join;
+}
+
 private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
     import xlld.xl: coerce, free;
     import std.exception: enforce;
@@ -106,7 +111,8 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
 }
 
 
-private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, double[][], string[][]);
+private enum isWorksheetFunction(alias F) =
+    isSupportedFunction!(F, double, double[][], string[][], string[], double[]);
 
 string wrapWorksheetFunctionsString(string moduleName)() {
     import xlld.traits: Identity;
@@ -197,6 +203,13 @@ version(unittest) {
                                     ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
 
+@("Wrap string[] -> double]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toSRef([["foo", "bar"], ["baz", "quux"]]);
+    FuncStringSlice(&arg).shouldEqualDlang(4.0);
+}
+
 private enum invalidXlOperType = 0xdeadbeef;
 
 /**
@@ -236,31 +249,35 @@ string wrapModuleFunctionStr(string moduleName, string funcName) {
     return [
         `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(LPXLOPER12 arg) {`,
         `    static import ` ~ moduleName ~ `;`,
-        `    import xlld.xl: free, convertInput;`,
-        `    import std.traits: Parameters;`,
-        `    import std.conv: text;`,
         `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
-
-        `    static assert(Parameters!wrappedFunc.length == 1,`,
-        `                  text("Illegal number of parameters, only 1 supported, not ",`,
-        `                       Parameters!wrappedFunc.length));`,
-        `    alias InputType = Parameters!wrappedFunc[0];`,
-        `    static XLOPER12 ret;`,
-        `    // must 1st convert argument to the "real" type.`,
-        `    // 2D arrays are passed in as SRefs, for instance`,
-        `    XLOPER12 realArg;`,
-        `    try {`,
-        `        realArg = convertInput!InputType(arg);`,
-        `    } catch(Exception ex) {`,
-        `        ret.xltype = xltypeErr;`,
-        `        ret.val.err = -1;`,
-        `        return &ret;`,
-        `    }`,
-        `    scope(exit) free(&realArg);`,
-        `    ret = toXlOper(wrappedFunc(fromXlOper!InputType(&realArg)));`,
-        `    return &ret;`,
+        `    return wrapModuleFunctionImpl!wrappedFunc(arg);`,
         `}`,
     ].join("\n");
+}
+
+LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc)(LPXLOPER12 arg) {
+    import std.conv: text;
+    import std.traits: Parameters;
+    import xlld.xl: free, convertInput;
+
+    static assert(Parameters!wrappedFunc.length == 1,
+                  text("Illegal number of parameters, only 1 supported, not ",
+                       Parameters!wrappedFunc.length));
+    alias InputType = Parameters!wrappedFunc[0];
+    static XLOPER12 ret;
+    // must 1st convert argument to the "real" type.`,
+    // 2D arrays are passed in as SRefs, for instance`,
+    XLOPER12 realArg;
+    try {
+        realArg = convertInput!InputType(arg);
+    } catch(Exception ex) {
+        ret.xltype = xltypeErr;
+        ret.val.err = -1;
+        return &ret;
+    }
+    scope(exit) free(&realArg);
+    ret = toXlOper(wrappedFunc(fromXlOper!InputType(&realArg)));
+    return &ret;
 }
 
 
