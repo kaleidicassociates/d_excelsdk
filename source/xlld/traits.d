@@ -331,12 +331,12 @@ unittest {
     dllDefFile!"xlld.test_xl_funcs"("myxll32.dll", "Simple D add-in").shouldEqual(
         DllDefFile(
             [
-                Statement("LIBRARY"w, "myxll32.dll"w),
-                Statement("DESCRIPTION"w, "Simple D add-in"w),
-                Statement("EXETYPE"w, "NT"w),
-                Statement("CODE"w, "PRELOAD DISCARDABLE"w),
-                Statement("DATA"w, "PRELOAD MULTIPLE"w),
-                Statement("EXPORTS"w, ["xlAutoOpen"w, "FuncMulByTwo"w, "FuncFP12"w, "FuncFib"w]),
+                Statement("LIBRARY", "myxll32.dll"),
+                Statement("DESCRIPTION", "Simple D add-in"),
+                Statement("EXETYPE", "NT"),
+                Statement("CODE", "PRELOAD DISCARDABLE"),
+                Statement("DATA", "PRELOAD MULTIPLE"),
+                Statement("EXPORTS", ["xlAutoOpen", "FuncMulByTwo", "FuncFP12", "FuncFib"]),
             ]
         )
     );
