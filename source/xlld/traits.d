@@ -119,6 +119,20 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     getWorksheetFunction!foo.shouldEqual(expected);
 }
 
+@("getworksheetFunction with @Register out of order")
+@safe pure unittest {
+
+    @Register(HelpTopic("I need somebody"), ArgumentText("my arg txt"))
+    double foo(double);
+
+    auto expected = doubleToDoubleFunction("foo");
+    expected.argumentText = ArgumentText("my arg txt");
+    expected.helpTopic = HelpTopic("I need somebody");
+
+    getWorksheetFunction!foo.shouldEqual(expected);
+}
+
+
 private wstring getTypeText(alias F)() if(isSomeFunction!F) {
     import std.traits: ReturnType, Parameters;
 
