@@ -29,13 +29,8 @@ struct WorksheetFunction {
     Procedure procedure;
     TypeText typeText;
     FunctionText functionText;
-    ArgumentText argumentText;
-    MacroType macroType;
-    Category category;
-    ShortcutText shortcutText;
-    HelpTopic helpTopic;
-    FunctionHelp functionHelp;
-    ArgumentHelp argumentHelp;
+    Optional optional;
+    alias optional this;
 
     const(wstring)[] toStringArray() @safe pure const nothrow {
         return [procedure.value, typeText.value,
@@ -44,3 +39,15 @@ struct WorksheetFunction {
                 shortcutText.value, helpTopic.value, functionHelp.value] ~ argumentHelp.value;
     }
 }
+
+struct Optional {
+    ArgumentText argumentText;
+    MacroType macroType = MacroType("1"w);
+    Category category;
+    ShortcutText shortcutText;
+    HelpTopic helpTopic;
+    FunctionHelp functionHelp;
+    ArgumentHelp argumentHelp;
+}
+
+alias Register = Optional;
