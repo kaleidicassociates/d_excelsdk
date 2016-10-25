@@ -27,7 +27,7 @@ XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
     return ret;
 }
 
-XLOPER12 toXlOper(T)(T[][] values) {
+XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string)) {
     import std.algorithm: map, all;
     import std.array: array;
     import std.exception: enforce;
@@ -59,25 +59,18 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     return val.val.num;
 }
 
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double[][])) {
-    return val.fromXlOperMulti!(double, xltypeNum);
+// 2D slices
+auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double))) {
+    return val.fromXlOperMulti!(typeof(T.init[0][0]));
 }
 
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
-    return val.fromXlOperMulti!(string, xltypeStr);
-}
-
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double[])) {
+// 1D slices
+auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[], E) && (is(E == string) || is(E == double))) {
     import std.array: join;
-    return val.fromXlOperMulti!(double, xltypeNum).join;
+    return val.fromXlOperMulti!(typeof(T.init[0])).join;
 }
 
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[])) {
-    import std.array: join;
-    return val.fromXlOperMulti!(string, xltypeStr).join;
-}
-
-private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
+private auto fromXlOperMulti(T)(LPXLOPER12 val) {
     import xlld.xl: coerce, free;
     import std.exception: enforce;
     import std.conv: text;
@@ -100,7 +93,7 @@ private auto fromXlOperMulti(T, int XlType)(LPXLOPER12 val) {
         foreach(const col; 0 .. columns) {
             auto cellVal = coerce(&values[row * columns + col]);
             scope(exit) free(&cellVal);
-            if(cellVal.xltype == XlType)
+            if(cellVal.xltype == dlangToXlOperType!T.Type)
                 ret[row][col] = (&cellVal).fromXlOper!T;
             else
                 ret[row][col] = T.init;
@@ -212,14 +205,14 @@ version(unittest) {
                                     ["totobob", "titibob", "tutubob", "tetebob"]]);
 }
 
-@("Wrap string[] -> double]")
+@("Wrap string[] -> double")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([["foo", "bar"], ["baz", "quux"]]);
     FuncStringSlice(&arg).shouldEqualDlang(4.0);
 }
 
-@("Wrap double[] -> double]")
+@("Wrap double[] -> double")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
@@ -237,46 +230,25 @@ version(unittest) {
 private enum invalidXlOperType = 0xdeadbeef;
 
 /**
- Maps a D type to an integer xltype in XLOPER12 that would
- get passed in by Excel. This template exists because the values
- that get passed in don't immediately correspond to what would
- be expected. For instance, an xltypeMulti gets passed in as
- an xltypeSRef that must be _coerced_ to an xltypeMulti
- */
-template dlangToXlOperInputType(T) {
-    static if(is(T == double[][]))
-        enum dlangToXlOperInputType = xltypeSRef;
-    else static if(is(T == string[][]))
-        enum dlangToXlOperInputType = xltypeSRef;
-    else static if(is(T == double[]))
-        enum dlangToXlOperInputType = xltypeSRef;
-    else static if(is(T == string[]))
-        enum dlangToXlOperInputType = xltypeSRef;
-    else
-        enum dlangToXlOperInputType = invalidXlOperType;
-}
-
-/**
- Maps a D type to an integer xltype in XLOPER12 that would
- get coerced to after Excel passes it in as input
+ Maps a D type to two integer xltypes from XLOPER12.
+ InputType is the type actually passed in by the spreadsheet,
+ whilst Type is the Type that it gets coerced to.
  */
 template dlangToXlOperType(T) {
-    static if(is(T == double[][]))
-        enum dlangToXlOperType = xltypeMulti;
-    else static if(is(T == string[][]))
-        enum dlangToXlOperType = xltypeMulti;
-    else static if(is(T == double[]))
-        enum dlangToXlOperType = xltypeMulti;
-    else static if(is(T == string[]))
-        enum dlangToXlOperType = xltypeMulti;
-    else static if(is(T == double))
-        enum dlangToXlOperType = xltypeNum;
-    else static if(is(T == string))
-        enum dlangToXlOperType = xltypeStr;
-    else
-        enum dlangToXlOperType = invalidXlOperType;
+    static if(is(T == double[][]) || is(T == string[][]) || is(T == double[]) || is(T == string[])) {
+        enum InputType = xltypeSRef;
+        enum Type= xltypeMulti;
+    } else static if(is(T == double)) {
+        enum InputType = xltypeNum;
+        enum Type = xltypeNum;
+    } else static if(is(T == string)) {
+        enum InputType = xltypeStr;
+        enum Type = xltypeStr;
+    } else {
+        enum InputType = invalidXlOperType;
+        enum Type = invalidXlOperType;
+    }
 }
-
 
 string wrapModuleFunctionStr(string moduleName, string funcName) {
     import std.array: join;
@@ -325,15 +297,15 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
 
 
 
-XLOPER12 convertInput(InputType)(LPXLOPER12 arg) {
+XLOPER12 convertInput(T)(LPXLOPER12 arg) {
     import xlld.xl: coerce, free;
 
-    if(arg.xltype != dlangToXlOperInputType!InputType)
+    if(arg.xltype != dlangToXlOperType!T.InputType)
         throw new Exception("Wrong input type");
 
     auto realArg = coerce(arg);
 
-    if(realArg.xltype != dlangToXlOperType!InputType) {
+    if(realArg.xltype != dlangToXlOperType!T.Type) {
         free(&realArg);
         throw new Exception("Wrong converted input type");
     }
