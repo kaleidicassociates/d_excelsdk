@@ -71,3 +71,9 @@ double FuncDoubleSlice(double[] arg) {
 double FuncStringSlice(string[] arg) {
     return arg.length;
 }
+
+double[] FuncSliceTimes3(double[] arg) {
+    import std.algorithm;
+    import std.array;
+    return arg.map!(a => a * 3).array;
+}

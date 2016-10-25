@@ -51,6 +51,10 @@ XLOPER12 toXlOper(T)(T[][] values) {
     return ret;
 }
 
+XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
+    return [values].toXlOper;
+}
+
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     return val.val.num;
 }
@@ -215,11 +219,18 @@ version(unittest) {
     FuncStringSlice(&arg).shouldEqualDlang(4.0);
 }
 
-@("Wrap string[] -> double]")
+@("Wrap double[] -> double]")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
     FuncDoubleSlice(&arg).shouldEqualDlang(6.0);
+}
+
+@("Wrap double[] -> double[]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+    FuncSliceTimes3(&arg).shouldEqualDlang([3.0, 6.0, 9.0, 12.0, 15.0, 18.0]);
 }
 
 
