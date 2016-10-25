@@ -42,18 +42,3 @@ version(unittest) {
         Excel12f(xlFree, null, [oper]);
     }
 }
-
-
-XLOPER12 convertInput(InputType)(LPXLOPER12 arg) {
-    if(arg.xltype != dlangToXlOperInputType!InputType)
-        throw new Exception("Wrong input type");
-
-    auto realArg = coerce(arg);
-
-    if(realArg.xltype != dlangToXlOperType!InputType) {
-        free(&realArg);
-        throw new Exception("Wrong converted input type");
-    }
-
-    return realArg;
-}

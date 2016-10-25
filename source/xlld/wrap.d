@@ -292,7 +292,7 @@ string wrapModuleFunctionStr(string moduleName, string funcName) {
 LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc)(LPXLOPER12 arg) {
     import std.conv: text;
     import std.traits: Parameters;
-    import xlld.xl: free, convertInput;
+    import xlld.xl: free;
 
     static assert(Parameters!wrappedFunc.length == 1,
                   text("Illegal number of parameters, only 1 supported, not ",
@@ -321,4 +321,22 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
         wrapWorksheetFunctionsString!Modules ~
         "\n" ~
         implGetWorksheetFunctionsString!OriginalModule;
+}
+
+
+
+XLOPER12 convertInput(InputType)(LPXLOPER12 arg) {
+    import xlld.xl: coerce, free;
+
+    if(arg.xltype != dlangToXlOperInputType!InputType)
+        throw new Exception("Wrong input type");
+
+    auto realArg = coerce(arg);
+
+    if(realArg.xltype != dlangToXlOperType!InputType) {
+        free(&realArg);
+        throw new Exception("Wrong converted input type");
+    }
+
+    return realArg;
 }
