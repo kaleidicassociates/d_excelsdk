@@ -4,15 +4,23 @@
  */
 module xlld.dummy;
 
-version(unittest):
+version(unittest)
+    enum useDummy = true;
+else version(main)
+    enum useDummy = true;
+else
+    enum useDummy = false;
+
 version(Windows):
+static if(useDummy) {
 
-import xlld.xlcall;
+    import xlld.xlcall;
 
-extern(System) int Excel4v(int xlfn, LPXLOPER operRes, int count, LPXLOPER* opers) { //pascal
-    return 0;
-}
+    extern(System) int Excel4v(int xlfn, LPXLOPER operRes, int count, LPXLOPER* opers) {
+        return 0;
+    }
 
-extern(C) int Excel4(int xlfn, LPXLOPER operRes, int count,... ) { //_cdecl
-    return 0;
+    extern(C) int Excel4(int xlfn, LPXLOPER operRes, int count,... ) {
+        return 0;
+    }
 }

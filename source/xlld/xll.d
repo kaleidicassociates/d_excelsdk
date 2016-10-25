@@ -7,6 +7,9 @@
 	with Excel.
 */
 
+version(main) {}
+else {
+
 import xlld;
 import core.sys.windows.windows;
 
@@ -106,4 +109,6 @@ extern(Windows) LPXLOPER12 xlAddInManagerInfo12(LPXLOPER12 xAction)
 	//Word of caution - returning static XLOPERs/XLOPER12s is not thread safe
 	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
 	return cast(LPXLOPER12) &xInfo;
+}
+
 }

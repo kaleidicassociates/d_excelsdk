@@ -270,22 +270,46 @@ struct DllDefFile {
 }
 
 struct Statement {
-    wstring name;
-    wstring[] args;
+    string name;
+    string[] args;
 
-    this(wstring name, wstring[] args) {
+    this(string name, string[] args) @safe pure nothrow {
         this.name = name;
         this.args = args;
     }
 
-    this(wstring name, wstring arg) {
+    this(string name, string arg) @safe pure nothrow {
         this(name, [arg]);
+    }
+
+    string toString() @safe pure const {
+        import std.array: join;
+        import std.algorithm: map;
+
+        if(name == "EXPORTS")
+            return name ~ "\n" ~ args.map!(a => "\t\t" ~ a).join("\n");
+        else
+            return name ~ "\t\t" ~ args.map!(a => stringify(name, a)).join(" ");
+    }
+
+    static private string stringify(in string name, in string arg) @safe pure {
+        if(name == "LIBRARY") return `"` ~ arg ~ `"`;
+        if(name == "DESCRIPTION") return `'` ~ arg ~ `'`;
+        return arg;
     }
 }
 
-DllDefFile dllDefFile(Modules...)(wstring libName, wstring description)
+/**
+   Returns a structure descripting a Windows .def file.
+   This allows the tests to not care about the specific formatting
+   used when writing the information out.
+   This encapsulates all the functions to be exported by the DLL/XLL.
+ */
+DllDefFile dllDefFile(Modules...)(string libName, string description)
 if(allSatisfy!(isSomeString, typeof(Modules)))
 {
+    import std.conv: to;
+
     auto statements = [
         Statement("LIBRARY", libName),
         Statement("DESCRIPTION", description),
@@ -293,9 +317,10 @@ if(allSatisfy!(isSomeString, typeof(Modules)))
         Statement("CODE", "PRELOAD DISCARDABLE"),
         Statement("DATA", "PRELOAD MULTIPLE"),
     ];
-    wstring[] exports = ["xlAutoOpen"];
+
+    string[] exports = ["xlAutoOpen"];
     foreach(func; getAllWorksheetFunctions!Modules) {
-        exports ~= func.procedure;
+        exports ~= func.procedure.to!string;
     }
 
     return DllDefFile(statements ~ Statement("EXPORTS", exports));
