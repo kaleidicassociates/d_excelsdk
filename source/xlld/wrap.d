@@ -264,10 +264,10 @@ string wrapModuleFunctionStr(string moduleName, string funcName) {
 }
 
 
-string wrapAll(string moduleName, string originalModule = __MODULE__)() {
+string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
     import xlld.traits: implGetWorksheetFunctionsString;
     return
-        wrapWorksheetFunctionsString!moduleName ~
+        wrapWorksheetFunctionsString!Modules ~
         "\n" ~
-        implGetWorksheetFunctionsString!originalModule;
+        implGetWorksheetFunctionsString!OriginalModule;
 }
