@@ -224,6 +224,10 @@ template dlangToXlOperInputType(T) {
         enum dlangToXlOperInputType = xltypeSRef;
     else static if(is(T == string[][]))
         enum dlangToXlOperInputType = xltypeSRef;
+    else static if(is(T == double[]))
+        enum dlangToXlOperInputType = xltypeSRef;
+    else static if(is(T == string[]))
+        enum dlangToXlOperInputType = xltypeSRef;
     else
         enum dlangToXlOperInputType = invalidXlOperType;
 }
@@ -236,6 +240,10 @@ template dlangToXlOperType(T) {
     static if(is(T == double[][]))
         enum dlangToXlOperType = xltypeMulti;
     else static if(is(T == string[][]))
+        enum dlangToXlOperType = xltypeMulti;
+    else static if(is(T == double[]))
+        enum dlangToXlOperType = xltypeMulti;
+    else static if(is(T == string[]))
         enum dlangToXlOperType = xltypeMulti;
     else static if(is(T == double))
         enum dlangToXlOperType = xltypeNum;
