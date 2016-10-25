@@ -28,16 +28,16 @@ version(unittest) {
     // optional arguments
     WorksheetFunction makeWorksheetFunction(wstring name, wstring typeText) @safe pure nothrow {
         WorksheetFunction func = {
-          procedure: name,
-          typeText: typeText,
-          functionText: name,
-          argumentText: ""w,
-          macroType: "1"w,
-          category: ""w,
-          shortcutText: ""w,
-          helpTopic: ""w,
-          functionHelp: ""w,
-          argumentHelp: [],
+          procedure: Procedure(name),
+          typeText: TypeText(typeText),
+          functionText: FunctionText(name),
+          argumentText: ArgumentText(""w),
+          macroType: MacroType("1"w),
+          category: Category(""w),
+          shortcutText: ShortcutText(""w),
+          helpTopic: HelpTopic(""w),
+          functionHelp: FunctionHelp(""w),
+          argumentHelp: ArgumentHelp([]),
         };
 
         return func;
@@ -72,9 +72,10 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     } else {
 
         WorksheetFunction ret;
-        ret.procedure = ret.functionText = __traits(identifier, F);
-        ret.typeText = getTypeText!F;
-        ret.macroType = "1"w;
+        ret.procedure = Procedure(__traits(identifier, F));
+        ret.functionText = FunctionText(__traits(identifier, F));
+        ret.typeText = TypeText(getTypeText!F);
+        ret.macroType = MacroType("1"w);
         return ret;
     }
 }
@@ -136,6 +137,7 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
     LPXLOPER12 fun(LPXLOPER12);
     getTypeText!fun.to!string.shouldEqual("UU");
 }
+
 
 
 // helper template for aliasing
