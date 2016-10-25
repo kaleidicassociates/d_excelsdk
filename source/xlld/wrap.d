@@ -292,9 +292,11 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
     return
         wrapWorksheetFunctionsString!Modules ~
         "\n" ~
-        implGetWorksheetFunctionsString!OriginalModule;
+        implGetWorksheetFunctionsString!OriginalModule ~
+        "\n" ~
+        `mixin GenerateDllDef!"` ~ OriginalModule ~ `";` ~
+        "\n";
 }
-
 
 
 XLOPER12 convertInput(T)(LPXLOPER12 arg) {
