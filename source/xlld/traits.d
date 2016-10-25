@@ -264,3 +264,55 @@ unittest {
         ]
     );
 }
+
+struct DllDefFile {
+    Statement[] statements;
+}
+
+struct Statement {
+    wstring name;
+    wstring[] args;
+
+    this(wstring name, wstring[] args) {
+        this.name = name;
+        this.args = args;
+    }
+
+    this(wstring name, wstring arg) {
+        this(name, [arg]);
+    }
+}
+
+DllDefFile dllDefFile(Modules...)(wstring libName, wstring description)
+if(allSatisfy!(isSomeString, typeof(Modules)))
+{
+    auto statements = [
+        Statement("LIBRARY", libName),
+        Statement("DESCRIPTION", description),
+        Statement("EXETYPE", "NT"),
+        Statement("CODE", "PRELOAD DISCARDABLE"),
+        Statement("DATA", "PRELOAD MULTIPLE"),
+    ];
+    wstring[] exports = ["xlAutoOpen"];
+    foreach(func; getAllWorksheetFunctions!Modules) {
+        exports ~= func.procedure;
+    }
+
+    return DllDefFile(statements ~ Statement("EXPORTS", exports));
+}
+
+@("worksheet functions to .def file")
+unittest {
+    dllDefFile!"xlld.test_xl_funcs"("myxll32.dll", "Simple D add-in").shouldEqual(
+        DllDefFile(
+            [
+                Statement("LIBRARY"w, "myxll32.dll"w),
+                Statement("DESCRIPTION"w, "Simple D add-in"w),
+                Statement("EXETYPE"w, "NT"w),
+                Statement("CODE"w, "PRELOAD DISCARDABLE"w),
+                Statement("DATA"w, "PRELOAD MULTIPLE"w),
+                Statement("EXPORTS"w, ["xlAutoOpen"w, "FuncMulByTwo"w, "FuncFP12"w, "FuncFib"w]),
+            ]
+        )
+    );
+}
