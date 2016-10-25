@@ -63,6 +63,11 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[][])) {
     return val.fromXlOperMulti!(string, xltypeStr);
 }
 
+auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double[])) {
+    import std.array: join;
+    return val.fromXlOperMulti!(double, xltypeNum).join;
+}
+
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string[])) {
     import std.array: join;
     return val.fromXlOperMulti!(string, xltypeStr).join;
@@ -210,6 +215,14 @@ version(unittest) {
     FuncStringSlice(&arg).shouldEqualDlang(4.0);
 }
 
+@("Wrap string[] -> double]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+    FuncDoubleSlice(&arg).shouldEqualDlang(6.0);
+}
+
+
 private enum invalidXlOperType = 0xdeadbeef;
 
 /**
@@ -247,6 +260,8 @@ template dlangToXlOperType(T) {
         enum dlangToXlOperType = xltypeMulti;
     else static if(is(T == double))
         enum dlangToXlOperType = xltypeNum;
+    else static if(is(T == string))
+        enum dlangToXlOperType = xltypeStr;
     else
         enum dlangToXlOperType = invalidXlOperType;
 }

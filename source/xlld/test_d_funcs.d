@@ -63,6 +63,11 @@ string[][] FuncBob(string[][] args) {
     return ret;
 }
 
+
+double FuncDoubleSlice(double[] arg) {
+    return arg.length;
+}
+
 double FuncStringSlice(string[] arg) {
     return arg.length;
 }
