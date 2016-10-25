@@ -6,7 +6,7 @@ license "proprietary"
 
 configuration "unittest" {
     targetType "executable"
-    dependency "unit-threaded" version="~>0.6.30"
+    dependency "unit-threaded" version="~>0.6.31"
     //preBuildCommands "dub run unit-threaded -c gen_ut_main -- -f tests/bin.d"
     mainSourceFile "bin/ut.d"
     excludedSourceFiles "source/xlld/xll.d"
