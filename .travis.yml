@@ -2,7 +2,7 @@ dist: trusty
 language: d
 sudo: false
 d: dmd
-script: make
+script: dub test
 
 notifications:
   slack: kaleidic:6grLjjD8iJiZxvnEnQhCvr48

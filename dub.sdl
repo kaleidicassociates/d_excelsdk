@@ -1,0 +1,20 @@
+
+name "d_excelsdk"
+description "Excel bindings for D"
+authors "Laeeth Isharc" "Stefan Kock" "Atila Neves"
+copyright "Copyright © 2016, Kaleidic Associates Ltd"
+license "proprietary"
+
+configuration "def" {
+    targetType "executable"
+    versions "main"
+    mainSourceFile "example/myxll.d"
+}
+
+configuration "unittest" {
+    targetType "executable"
+    dependency "unit-threaded" version="~>0.6.31"
+    //preBuildCommands "dub run unit-threaded -c gen_ut_main -- -f tests/bin.d"
+    mainSourceFile "bin/ut.d"
+    excludedSourceFiles "source/xlld/xll.d"
+}
