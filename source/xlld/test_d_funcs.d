@@ -77,3 +77,15 @@ double[] FuncSliceTimes3(double[] arg) {
     import std.array;
     return arg.map!(a => a * 3).array;
 }
+
+double PublishDouble(double arg) {
+    import std.socket;
+    import std.conv;
+    auto dstAddr = new InternetAddress("localhost", 33_333);
+    auto socket = new UdpSocket();
+    auto resp = arg.to!string;
+    socket.sendTo(resp, dstAddr);
+    // import std.conv;
+    // return arg.to!string;
+    return arg * 3;
+}
