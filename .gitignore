@@ -3,9 +3,11 @@
 *.xll
 *.map
 *.exp
+*.def
 bin
 .dub
 docs.json
 __dummy.html
 *.o
 d_excelsdk
+d_excelsdk.exe

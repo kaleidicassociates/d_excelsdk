@@ -264,3 +264,103 @@ unittest {
         ]
     );
 }
+
+struct DllDefFile {
+    Statement[] statements;
+}
+
+struct Statement {
+    string name;
+    string[] args;
+
+    this(string name, string[] args) @safe pure nothrow {
+        this.name = name;
+        this.args = args;
+    }
+
+    this(string name, string arg) @safe pure nothrow {
+        this(name, [arg]);
+    }
+
+    string toString() @safe pure const {
+        import std.array: join;
+        import std.algorithm: map;
+
+        if(name == "EXPORTS")
+            return name ~ "\n" ~ args.map!(a => "\t\t" ~ a).join("\n");
+        else
+            return name ~ "\t\t" ~ args.map!(a => stringify(name, a)).join(" ");
+    }
+
+    static private string stringify(in string name, in string arg) @safe pure {
+        if(name == "LIBRARY") return `"` ~ arg ~ `"`;
+        if(name == "DESCRIPTION") return `'` ~ arg ~ `'`;
+        return arg;
+    }
+}
+
+/**
+   Returns a structure descripting a Windows .def file.
+   This allows the tests to not care about the specific formatting
+   used when writing the information out.
+   This encapsulates all the functions to be exported by the DLL/XLL.
+ */
+DllDefFile dllDefFile(Modules...)(string libName, string description)
+if(allSatisfy!(isSomeString, typeof(Modules)))
+{
+    import std.conv: to;
+
+    auto statements = [
+        Statement("LIBRARY", libName),
+        Statement("DESCRIPTION", description),
+        Statement("EXETYPE", "NT"),
+        Statement("CODE", "PRELOAD DISCARDABLE"),
+        Statement("DATA", "PRELOAD MULTIPLE"),
+    ];
+
+    string[] exports = ["xlAutoOpen"];
+    foreach(func; getAllWorksheetFunctions!Modules) {
+        exports ~= func.procedure.to!string;
+    }
+
+    return DllDefFile(statements ~ Statement("EXPORTS", exports));
+}
+
+@("worksheet functions to .def file")
+unittest {
+    dllDefFile!"xlld.test_xl_funcs"("myxll32.dll", "Simple D add-in").shouldEqual(
+        DllDefFile(
+            [
+                Statement("LIBRARY", "myxll32.dll"),
+                Statement("DESCRIPTION", "Simple D add-in"),
+                Statement("EXETYPE", "NT"),
+                Statement("CODE", "PRELOAD DISCARDABLE"),
+                Statement("DATA", "PRELOAD MULTIPLE"),
+                Statement("EXPORTS", ["xlAutoOpen", "FuncMulByTwo", "FuncFP12", "FuncFib"]),
+            ]
+        )
+    );
+}
+
+
+mixin template GenerateDllDef(string module_ = __MODULE__) {
+    version(main) {
+        void main(string[] args) {
+
+            import std.stdio: File;
+            import std.exception: enforce;
+            import std.path: stripExtension;
+
+            enforce(args.length >= 2 && args.length <= 4,
+                    "Usage: " ~ args[0] ~ " [file_name] <lib_name> <description>");
+
+            immutable fileName = args[1];
+            immutable libName = args.length > 2 ? args[2] : fileName.stripExtension ~ ".xll";
+            immutable description = args.length > 3 ? args[3] : "Simple D add-in to Excel";
+
+            auto file = File(fileName, "w");
+            foreach(stmt; dllDefFile!module_(libName, description).statements)
+                file.writeln(stmt.toString);
+        }
+    }
+}
