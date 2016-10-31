@@ -4,13 +4,17 @@ description "Excel bindings for D"
 authors "Laeeth Isharc" "Stefan Kock" "Atila Neves"
 copyright "Copyright © 2016, Kaleidic Associates Ltd"
 license "proprietary"
+targetType "dynamicLibrary"
 
-configuration "xll" {
+configuration "library" {
     targetType "dynamicLibrary"
-    linkerFlags "IMPLIB"
+    targetName "myxll32"
+    lflags "/IMPLIB"
     libs "d_excelsdk"
     libs "xlcall32d"
-    sourceFiles "example/myxll.d"
+    sourceFiles "example/myxll.d" "myxll32.def"
+    preBuildCommands "dub run -c def --nodeps -- myxll32.def"
+    postBuildCommands "ren myxll32.dll myxll32.xll"
 }
 
 configuration "def" {
