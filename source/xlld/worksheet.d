@@ -14,7 +14,14 @@ private mixin template ST(string name, T = wstring) {
     mixin(`struct ` ~ name ~ `{ T value; }`);
 }
 
-mixin ST!"Procedure";
+struct Procedure {
+    wstring value;
+    string toString() @safe pure const {
+        import std.conv: to;
+        return value.to!string;
+    }
+}
+
 mixin ST!"TypeText";
 mixin ST!"FunctionText";
 mixin ST!"ArgumentText";
