@@ -13,7 +13,7 @@ configuration "def" {
 
 configuration "unittest" {
     targetType "executable"
-    dependency "unit-threaded" version="~>0.6.31"
+    dependency "unit-threaded" version="~>0.6.33"
     //preBuildCommands "dub run unit-threaded -c gen_ut_main -- -f tests/bin.d"
     mainSourceFile "bin/ut.d"
     excludedSourceFiles "source/xlld/xll.d"
