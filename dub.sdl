@@ -5,6 +5,14 @@ authors "Laeeth Isharc" "Stefan Kock" "Atila Neves"
 copyright "Copyright © 2016, Kaleidic Associates Ltd"
 license "proprietary"
 
+configuration "xll" {
+    targetType "dynamicLibrary"
+    linkerFlags "IMPLIB"
+    libs "d_excelsdk"
+    libs "xlcall32d"
+    sourceFiles "example/myxll.d"
+}
+
 configuration "def" {
     targetType "executable"
     versions "main"
