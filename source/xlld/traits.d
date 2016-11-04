@@ -27,20 +27,21 @@ version(unittest) {
     // return a WorksheetFunction for a double function(double) with no
     // optional arguments
     WorksheetFunction makeWorksheetFunction(wstring name, wstring typeText) @safe pure nothrow {
-        WorksheetFunction func = {
-          procedure: name,
-          typeText: typeText,
-          functionText: name,
-          argumentText: ""w,
-          macroType: "1"w,
-          category: ""w,
-          shortcutText: ""w,
-          helpTopic: ""w,
-          functionHelp: ""w,
-          argumentHelp: [],
-        };
-
-        return func;
+        return
+            WorksheetFunction(
+                Procedure(name),
+                TypeText(typeText),
+                FunctionText(name),
+                Optional(
+                    ArgumentText(""w),
+                    MacroType("1"w),
+                    Category(""w),
+                    ShortcutText(""w),
+                    HelpTopic(""w),
+                    FunctionHelp(""w),
+                    ArgumentHelp([]),
+                )
+            );
     }
 
     WorksheetFunction doubleToDoubleFunction(wstring name) @safe pure nothrow {
@@ -61,7 +62,8 @@ version(unittest) {
  WorksheetFunction struct with the fields filled in accordingly.
  */
 WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
-    import std.traits: ReturnType, Parameters;
+    import std.traits: ReturnType, Parameters, getUDAs;
+    import std.conv: text;
 
     alias R = ReturnType!F;
     alias T = Parameters!F;
@@ -72,9 +74,19 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
     } else {
 
         WorksheetFunction ret;
-        ret.procedure = ret.functionText = __traits(identifier, F);
-        ret.typeText = getTypeText!F;
-        ret.macroType = "1"w;
+        ret.procedure = Procedure(__traits(identifier, F));
+        ret.functionText = FunctionText(__traits(identifier, F));
+        ret.typeText = TypeText(getTypeText!F);
+
+        // check to see if decorated with @Register
+        alias registerAttrs = getUDAs!(F, Register);
+        static if(registerAttrs.length > 0) {
+            static assert(registerAttrs.length == 1,
+                          text("Only 1 @Register allowed, found ", registerAttrs.length,
+                               " on function ", __traits(identifier, F)));
+            ret.optional = registerAttrs[0];
+        }
+
         return ret;
     }
 }
@@ -92,6 +104,32 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
     double foo(int) { return 0; }
     getWorksheetFunction!foo.shouldThrowWithMessage("Unsupported function type double(int) for foo");
+}
+
+@("getworksheetFunction with @Register in order")
+@safe pure unittest {
+
+    @Register(ArgumentText("my arg txt"), MacroType("macro"))
+    double foo(double);
+
+    auto expected = doubleToDoubleFunction("foo");
+    expected.argumentText = ArgumentText("my arg txt");
+    expected.macroType = MacroType("macro");
+
+    getWorksheetFunction!foo.shouldEqual(expected);
+}
+
+@("getworksheetFunction with @Register out of order")
+@safe pure unittest {
+
+    @Register(HelpTopic("I need somebody"), ArgumentText("my arg txt"))
+    double foo(double);
+
+    auto expected = doubleToDoubleFunction("foo");
+    expected.argumentText = ArgumentText("my arg txt");
+    expected.helpTopic = HelpTopic("I need somebody");
+
+    getWorksheetFunction!foo.shouldEqual(expected);
 }
 
 
@@ -136,6 +174,7 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
     LPXLOPER12 fun(LPXLOPER12);
     getTypeText!fun.to!string.shouldEqual("UU");
 }
+
 
 
 // helper template for aliasing
