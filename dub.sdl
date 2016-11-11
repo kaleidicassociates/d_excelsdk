@@ -13,6 +13,7 @@ configuration "library" {
     libs "d_excelsdk"
     libs "xlcall32d"
     sourceFiles "example/myxll.d" "myxll32.def"
+    excludedSourceFiles "source/xlld/test_d_funcs.d" "source/xlld/test_xl_funcs.d"
     preBuildCommands "dub run -c def --nodeps -- myxll32.def"
     postBuildCommands "ren myxll32.dll myxll32.xll"
 }
@@ -21,6 +22,7 @@ configuration "def" {
     targetType "executable"
     versions "main"
     mainSourceFile "example/myxll.d"
+    excludedSourceFiles "source/xlld/test_d_funcs.d" "source/xlld/test_xl_funcs.d"
 }
 
 configuration "unittest" {

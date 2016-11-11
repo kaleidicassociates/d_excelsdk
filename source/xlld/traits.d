@@ -200,6 +200,8 @@ template isSupportedFunction(alias F, T...) {
         enum isSupportedFunction = false;
 }
 
+
+// if T is one of U
 private template isSupportedType(T, U...) {
     static if(U.length == 0)
         enum isSupportedType = false;
@@ -207,12 +209,22 @@ private template isSupportedType(T, U...) {
         enum isSupportedType = is(T == U[0]) || isSupportedType!(T, U[1..$]);
 }
 
-static assert(isSupportedType!(int, int, int));
-static assert(!isSupportedType!(int, double, string));
-
+@safe pure unittest {
+    static assert(isSupportedType!(int, int, int));
+    static assert(!isSupportedType!(int, double, string));
+}
 
 // whether or not this is a function that can be called from Excel
 private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, FP12*, LPXLOPER12);
+
+@safe pure unittest {
+    double doubleToDouble(double);
+    static assert(isWorksheetFunction!doubleToDouble);
+
+    LPXLOPER12 operToOper(LPXLOPER12);
+    static assert(isWorksheetFunction!operToOper);
+}
+
 
 /**
  Gets all Excel-callable functions in a given module
