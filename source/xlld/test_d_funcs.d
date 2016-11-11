@@ -89,6 +89,10 @@ string StringsToString(string[] args) {
     return args.join(", ");
 }
 
-string StringToString(string arg) {
+string StringToString(string arg) nothrow {
     return arg ~ "bar";
+}
+
+private string shouldNotBeAProblem(string, string[]) nothrow {
+    return "";
 }

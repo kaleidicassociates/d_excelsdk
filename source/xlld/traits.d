@@ -185,6 +185,7 @@ private alias Identity(alias T) = T;
 template isSupportedFunction(alias F, T...) {
     import std.traits: isSomeFunction, ReturnType, Parameters;
     import std.meta: AliasSeq, allSatisfy;
+    import std.typecons: Tuple;
 
     // trying to get a pointer to something is a good way of making sure we can
     // attempt to evaluate `isSomeFunction` - it's not always possible
@@ -194,6 +195,7 @@ template isSupportedFunction(alias F, T...) {
     static if(canGetPointerToIt)
         enum isSupportedFunction =
             isSomeFunction!F &&
+            __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
             isOneOfSupported!(ReturnType!F) &&
             allSatisfy!(isOneOfSupported, Parameters!F);
     else
@@ -264,7 +266,7 @@ WorksheetFunction[] getModuleWorksheetFunctions(string moduleName)() {
 /**
  Gets all Excel-callable functions from the given modules
  */
-WorksheetFunction[] getAllWorksheetFunctions(Modules...)() if(allSatisfy!(isSomeString, typeof(Modules))) {
+WorksheetFunction[] getAllWorksheetFunctions(Modules...)() pure @safe if(allSatisfy!(isSomeString, typeof(Modules))) {
     WorksheetFunction[] ret;
 
     foreach(module_; Modules) {

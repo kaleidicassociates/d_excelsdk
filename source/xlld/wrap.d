@@ -116,6 +116,10 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
 private enum isWorksheetFunction(alias F) =
     isSupportedFunction!(F, double, double[][], string[][], string[], double[], string);
 
+@safe pure unittest {
+    import xlld.test_d_funcs;
+    static assert(!isWorksheetFunction!shouldNotBeAProblem);
+}
 
 string wrapWorksheetFunctionsString(string moduleName)() {
     if(!__ctfe) {
