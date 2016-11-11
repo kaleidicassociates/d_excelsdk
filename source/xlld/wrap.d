@@ -56,6 +56,9 @@ XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
 }
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
+    if(val.xltype == xltypeMissing)
+        return double.init;
+
     return val.val.num;
 }
 
@@ -106,6 +109,10 @@ private auto fromXlOperMulti(T)(LPXLOPER12 val) {
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
     import std.conv: to;
+
+    if(val.xltype == xltypeMissing)
+        return null;
+
     wchar[] ret;
     ret.length = val.val.str[0];
     ret[0 .. $] = val.val.str[1 .. ret.length + 1];
@@ -328,6 +335,10 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     // must 1st convert each argument to the "real" type.
     // 2D arrays are passed in as SRefs, for instance
     foreach(i, InputType; Parameters!wrappedFunc) {
+        if(args[i].xltype == xltypeMissing) {
+             realArgs[i] = *args[i];
+             continue;
+        }
         try
             realArgs[i] = convertInput!InputType(args[i]);
         catch(Exception ex) {
