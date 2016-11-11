@@ -114,9 +114,18 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
 
 
 private enum isWorksheetFunction(alias F) =
-    isSupportedFunction!(F, double, double[][], string[][], string[], double[]);
+    isSupportedFunction!(F, double, double[][], string[][], string[], double[], string);
+
+@safe pure unittest {
+    import xlld.test_d_funcs;
+    static assert(!isWorksheetFunction!shouldNotBeAProblem);
+}
 
 string wrapWorksheetFunctionsString(string moduleName)() {
+    if(!__ctfe) {
+        return "";
+    }
+
     import xlld.traits: Identity;
     import std.array: join;
     import std.traits: ReturnType, Parameters;
@@ -139,9 +148,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 version(unittest) {
     // automatically converts from oper to compare with a D type
-    void shouldEqualDlang(T, U)(T actual, U expected, string file = __FILE__, ulong line = __LINE__) {
-        actual.xltype.shouldNotEqual(xltypeErr);
-        actual.fromXlOper!U.shouldEqual(expected);
+    void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
+        if(actual.xltype == xltypeErr)
+            fail("XLOPER is of error type", file, line);
+        actual.fromXlOper!U.shouldEqual(expected, file, line);
     }
 
     XLOPER12 toSRef(T)(T val) {
@@ -226,6 +236,27 @@ version(unittest) {
     FuncSliceTimes3(&arg).shouldEqualDlang([3.0, 6.0, 9.0, 12.0, 15.0, 18.0]);
 }
 
+@("Wrap string[] -> string[]")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toSRef(["quux", "toto"]);
+    StringsToStrings(&arg).shouldEqualDlang(["quuxfoo", "totofoo"]);
+}
+
+@("Wrap string[] -> string")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toSRef(["quux", "toto"]);
+    StringsToString(&arg).shouldEqualDlang("quux, toto");
+}
+
+@("Wrap string -> string")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toXlOper("foo");
+    StringToString(&arg).shouldEqualDlang("foobar");
+}
+
 
 private enum invalidXlOperType = 0xdeadbeef;
 
@@ -251,6 +282,10 @@ template dlangToXlOperType(T) {
 }
 
 string wrapModuleFunctionStr(string moduleName, string funcName) {
+    if(!__ctfe) {
+        return "";
+    }
+
     import std.array: join;
     return [
         `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(LPXLOPER12 arg) {`,
@@ -271,8 +306,8 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc)(LPXLOPER12 arg) {
                        Parameters!wrappedFunc.length));
     alias InputType = Parameters!wrappedFunc[0];
     static XLOPER12 ret;
-    // must 1st convert argument to the "real" type.`,
-    // 2D arrays are passed in as SRefs, for instance`,
+    // must 1st convert argument to the "real" type.
+    // 2D arrays are passed in as SRefs, for instance
     XLOPER12 realArg;
     try {
         realArg = convertInput!InputType(arg);
@@ -288,6 +323,11 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc)(LPXLOPER12 arg) {
 
 
 string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
+
+    if(!__ctfe) {
+        return "";
+    }
+
     import xlld.traits: implGetWorksheetFunctionsString;
     return
         wrapWorksheetFunctionsString!Modules ~
