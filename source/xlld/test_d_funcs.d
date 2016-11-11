@@ -88,3 +88,7 @@ string StringsToString(string[] args) {
     import std.string;
     return args.join(", ");
 }
+
+string StringToString(string arg) {
+    return arg ~ "bar";
+}

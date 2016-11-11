@@ -144,9 +144,10 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 version(unittest) {
     // automatically converts from oper to compare with a D type
-    void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, ulong line = __LINE__) {
-        actual.xltype.shouldNotEqual(xltypeErr);
-        actual.fromXlOper!U.shouldEqual(expected);
+    void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
+        if(actual.xltype == xltypeErr)
+            fail("XLOPER is of error type", file, line);
+        actual.fromXlOper!U.shouldEqual(expected, file, line);
     }
 
     XLOPER12 toSRef(T)(T val) {
@@ -238,11 +239,18 @@ version(unittest) {
     StringsToStrings(&arg).shouldEqualDlang(["quuxfoo", "totofoo"]);
 }
 
-@("Wrap string -> string")
+@("Wrap string[] -> string")
 @system unittest {
     mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef(["quux", "toto"]);
     StringsToString(&arg).shouldEqualDlang("quux, toto");
+}
+
+@("Wrap string -> string")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toXlOper("foo");
+    StringToString(&arg).shouldEqualDlang("foobar");
 }
 
 
