@@ -96,3 +96,7 @@ string StringToString(string arg) nothrow {
 private string shouldNotBeAProblem(string, string[]) nothrow {
     return "";
 }
+
+string ManyToString(string arg0, string arg1, string arg2) nothrow {
+    return arg0 ~ arg1 ~ arg2;
+}

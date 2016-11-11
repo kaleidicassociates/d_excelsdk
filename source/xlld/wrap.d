@@ -139,7 +139,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
         alias moduleMember = Identity!(__traits(getMember, module_, moduleMemberStr));
 
         static if(isWorksheetFunction!moduleMember) {
-            ret ~= wrapModuleFunctionStr(moduleName, moduleMemberStr);
+            ret ~= wrapModuleFunctionStr!(moduleName, moduleMemberStr);
         }
     }
 
@@ -257,6 +257,14 @@ version(unittest) {
     StringToString(&arg).shouldEqualDlang("foobar");
 }
 
+@("Wrap string, string, string -> string")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg0 = toXlOper("foo");
+    auto arg1 = toXlOper("bar");
+    auto arg2 = toXlOper("baz");
+    ManyToString(&arg0, &arg1, &arg2).shouldEqualDlang("foobarbaz");
+}
 
 private enum invalidXlOperType = 0xdeadbeef;
 
@@ -281,43 +289,72 @@ template dlangToXlOperType(T) {
     }
 }
 
-string wrapModuleFunctionStr(string moduleName, string funcName) {
+string wrapModuleFunctionStr(string moduleName, string funcName)() {
     if(!__ctfe) {
         return "";
     }
 
     import std.array: join;
+    import std.traits: Parameters;
+    import std.conv: to;
+    import std.algorithm: map;
+    import std.range: iota;
+    mixin("import " ~ moduleName ~ ": " ~ funcName ~ ";");
+
+    const argsLength = Parameters!(mixin(funcName)).length;
+    // e.g. LPXLOPER12 arg0, LPXLOPER12 arg1, ...
+    const argsDecl = argsLength.iota.map!(a => `LPXLOPER12 arg` ~ a.to!string).join(", ");
+    // e.g. arg0, arg1, ...
+    const argsCall = argsLength.iota.map!(a => `arg` ~ a.to!string).join(", ");
+
     return [
-        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(LPXLOPER12 arg) {`,
+        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) {`,
         `    static import ` ~ moduleName ~ `;`,
         `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
-        `    return wrapModuleFunctionImpl!wrappedFunc(arg);`,
+        `    return wrapModuleFunctionImpl!wrappedFunc(` ~ argsCall ~  `);`,
         `}`,
     ].join("\n");
 }
 
-LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc)(LPXLOPER12 arg) {
+LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
+    import xlld.xl: free;
     import std.conv: text;
     import std.traits: Parameters;
-    import xlld.xl: free;
+    import std.typecons: Tuple;
 
-    static assert(Parameters!wrappedFunc.length == 1,
-                  text("Illegal number of parameters, only 1 supported, not ",
-                       Parameters!wrappedFunc.length));
-    alias InputType = Parameters!wrappedFunc[0];
     static XLOPER12 ret;
-    // must 1st convert argument to the "real" type.
+
+    XLOPER12[T.length] realArgs;
+    // must 1st convert each argument to the "real" type.
     // 2D arrays are passed in as SRefs, for instance
-    XLOPER12 realArg;
-    try {
-        realArg = convertInput!InputType(arg);
-    } catch(Exception ex) {
-        ret.xltype = xltypeErr;
-        ret.val.err = -1;
-        return &ret;
+    foreach(i, InputType; Parameters!wrappedFunc) {
+        try
+            realArgs[i] = convertInput!InputType(args[i]);
+        catch(Exception ex) {
+            ret.xltype = xltypeErr;
+            ret.val.err = -1;
+            return &ret;
+        }
     }
-    scope(exit) free(&realArg);
-    ret = toXlOper(wrappedFunc(fromXlOper!InputType(&realArg)));
+
+    scope(exit)
+        foreach(ref arg; realArgs)
+            free(&arg);
+
+    Tuple!(Parameters!wrappedFunc) dArgs; // the D types to pass to the wrapped function
+
+    // next call the wrapped function with D types
+    foreach(i, InputType; Parameters!wrappedFunc) {
+        try
+            dArgs[i] = fromXlOper!InputType(&realArgs[i]);
+        catch(Exception ex) {
+            ret.xltype = xltypeErr;
+            ret.val.err = -1;
+            return &ret;
+        }
+    }
+
+    ret = toXlOper(wrappedFunc(dArgs.expand));
     return &ret;
 }
 
