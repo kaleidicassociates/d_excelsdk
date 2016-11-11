@@ -62,6 +62,14 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     return val.val.num;
 }
 
+@system unittest {
+    import std.math: isNaN;
+    XLOPER12 oper;
+    oper.xltype = xltypeMissing;
+    fromXlOper!double(&oper).isNaN.shouldBeTrue;
+}
+
+
 // 2D slices
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double))) {
     return val.fromXlOperMulti!(typeof(T.init[0][0]));
@@ -119,6 +127,11 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
     return ret.to!string;
 }
 
+@system pure unittest {
+    XLOPER12 oper;
+    oper.xltype = xltypeMissing;
+    fromXlOper!string(&oper).shouldBeNull;
+}
 
 private enum isWorksheetFunction(alias F) =
     isSupportedFunction!(F, double, double[][], string[][], string[], double[], string);
