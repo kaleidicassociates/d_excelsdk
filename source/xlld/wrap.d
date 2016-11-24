@@ -336,7 +336,7 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     const argsCall = argsLength.iota.map!(a => `arg` ~ a.to!string).join(", ");
 
     return [
-        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) {`,
+        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) nothrow {`,
         `    static import ` ~ moduleName ~ `;`,
         `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
         `    return wrapModuleFunctionImpl!wrappedFunc(` ~ argsCall ~  `);`,
@@ -386,7 +386,11 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
         }
     }
 
-    ret = toXlOper(wrappedFunc(dArgs.expand));
+    try
+        ret = toXlOper(wrappedFunc(dArgs.expand));
+    catch(Exception ex)
+        return null;
+
     return &ret;
 }
 
@@ -411,14 +415,16 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
 XLOPER12 convertInput(T)(LPXLOPER12 arg) {
     import xlld.xl: coerce, free;
 
+    static exception = new const Exception("Error converting input");
+
     if(arg.xltype != dlangToXlOperType!T.InputType)
-        throw new Exception("Wrong input type");
+        throw exception;
 
     auto realArg = coerce(arg);
 
     if(realArg.xltype != dlangToXlOperType!T.Type) {
         free(&realArg);
-        throw new Exception("Wrong converted input type");
+        throw exception;
     }
 
     return realArg;

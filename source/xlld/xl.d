@@ -7,7 +7,7 @@ import xlld.xlcall;
 import xlld.wrap;
 
 version(unittest) {
-    XLOPER12 coerce(LPXLOPER12 oper) {
+    XLOPER12 coerce(LPXLOPER12 oper) nothrow @nogc {
 
         XLOPER12 ret;
         ret = *oper;
@@ -27,18 +27,20 @@ version(unittest) {
         }
     }
 
-    void free(LPXLOPER12 oper) {
+    void free(LPXLOPER12 oper) nothrow @nogc {
 
     }
 } else {
     import xlld.framework;
-    XLOPER12 coerce(LPXLOPER12 oper) {
+    XLOPER12 coerce(LPXLOPER12 oper) nothrow {
         XLOPER12 coerced;
-        Excel12f(xlCoerce, &coerced, [oper]);
+        LPXLOPER12[1] arg = [oper];
+        Excel12f(xlCoerce, &coerced, arg);
         return coerced;
     }
 
-    void free(LPXLOPER12 oper) {
-        Excel12f(xlFree, null, [oper]);
+    void free(LPXLOPER12 oper) nothrow {
+        LPXLOPER12[1] arg = [oper];
+        Excel12f(xlFree, null, arg);
     }
 }

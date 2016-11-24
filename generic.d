@@ -1324,7 +1324,6 @@ extern(Windows) LPXLOPER12 WrapSquare3(
                         LPXLOPER12 px29)
 {
 	import std.algorithm:map,sum;
-	import std.experimental.allocator;
 	import std.conv:to;
 	auto args=px1.fromXLOPER12!(double[]);
 	double[][] retD;

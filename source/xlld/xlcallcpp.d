@@ -32,12 +32,12 @@ enum cxloper12Max=255;
 enum EXCEL12ENTRYPT="MdCallBack12";
 
 // PASCAL
-alias EXCEL12PROC=extern(Windows) int function (int xlfn, int coper, LPXLOPER12 *rgpxloper12, LPXLOPER12 xloper12Res);
+alias EXCEL12PROC=extern(Windows) int function (int xlfn, int coper, LPXLOPER12 *rgpxloper12, LPXLOPER12 xloper12Res) nothrow @nogc;
 
 HMODULE hmodule;
 EXCEL12PROC pexcel12;
 
-void FetchExcel12EntryPt() // __forceinline
+void FetchExcel12EntryPt() nothrow @nogc
 {
 	if (pexcel12 is null)
 	{
@@ -101,8 +101,7 @@ int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 
 }
 
-//pascal
-extern(Windows) int Excel12v(int xlfn, LPXLOPER12 operRes, int count, LPXLOPER12* opers)
+extern(Windows) int Excel12v(int xlfn, LPXLOPER12 operRes, int count, LPXLOPER12* opers) nothrow @nogc
 {
 	int mdRet;
 	FetchExcel12EntryPt();

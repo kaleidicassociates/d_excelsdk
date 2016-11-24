@@ -50,21 +50,17 @@ struct MemoryManager
 {
 	private int m_impCur=0;		// Current number of pools
 	private int m_impMax=MEMORYPOOLS;		// Max number of mem pools
-	static private MemoryPool[] m_rgmp;	// Storage for the memory pools
-//extern(C++) :
+	static private MemoryPool[] m_rgmp = new MemoryPool[MEMORYPOOLS]; // Storage for the memory pools
 
 	//
 	// Returns the singleton class, or creates one if it doesn't exit
 	//
-	static MemoryManager* GetManager()
+	static MemoryManager* GetManager() nothrow @nogc
 	{
-		if (!vpmm)
-		{
-			vpmm = new MemoryManager();
-			this.m_rgmp.length=MEMORYPOOLS;
-		}
-		return cast(MemoryManager*)vpmm;
-	}
+            static MemoryManager vpmm;
+            static bool init;
+            return &vpmm;
+        }
 
 
 	//
@@ -75,14 +71,7 @@ struct MemoryManager
 	//
 	~this()
 	{
-/**
-		foreach(pmp;m_rgmp)
-		{
-			if (pmp.m_rgchMemBlock !is null)
-				pmp.ClearPool();
-		}
-		// delete [] m_rgmp;
-*/	}
+        }
 
 	//
 	// Method that will query the correct memory pool of the calling
@@ -90,7 +79,6 @@ struct MemoryManager
 	// failure in getting the memory.
 	//
 	ubyte* CPP_GetTempMemory(size_t cByte)
-	//LPSTR CPP_GetTempMemory(size_t cByte)
 	{
 		uint dwThreadID;
 		MemoryPool* pmp;
@@ -110,7 +98,7 @@ struct MemoryManager
 	// Method that tells the pool owned by the calling thread that
 	// it is free to reuse all of its memory
 	//
-	void CPP_FreeAllTempMemory()
+	void CPP_FreeAllTempMemory() nothrow
 	{
 		uint dwThreadID;
 		MemoryPool* pmp;
@@ -131,7 +119,7 @@ struct MemoryManager
 	// the pool that matches the given thread ID. If a pool is not found,
 	// it creates a new one
 	//
-	private MemoryPool* GetMemoryPool(uint dwThreadID)
+	private MemoryPool* GetMemoryPool(uint dwThreadID) nothrow
 	{
 		int imp; //loop var
 
@@ -150,7 +138,7 @@ struct MemoryManager
 	// Will assign an unused pool to a thread; should all pools be assigned,
 	// it will grow the number of pools available.
 	//
-	private MemoryPool* CreateNewPool(uint dwThreadID)
+	private MemoryPool* CreateNewPool(uint dwThreadID) nothrow
 	{
 		if (m_impCur >= m_impMax)
 		{
@@ -169,7 +157,7 @@ struct MemoryManager
 	// deleted when the old array of pools is freed at the end of the method,
 	// despite the fact they are now being pointed to by the new pools.
 	//
-	void GrowPools()
+	void GrowPools() nothrow
 	{
 		MemoryPool* rgmpTemp;
 		MemoryPool* pmpDst;
@@ -179,21 +167,6 @@ struct MemoryManager
 
 		impMaxNew = 2*m_impMax;
 		m_rgmp.length=2*m_impMax;
-		/**
-		pmpDst = rgmpTemp = new MemoryPool(2*m_impMax);
-		pmpSrc = m_rgmp;
-
-		for (i = 0; i < m_impCur; i++)
-		{
-			//delete [] pmpDst.m_rgchMemBlock;
-			pmpDst.m_rgchMemBlock = pmpSrc.m_rgchMemBlock;
-			pmpDst.m_dwOwner = pmpSrc.m_dwOwner;
-
-			pmpDst++;
-			pmpSrc++;
-		}
-		m_rgmp = rgmpTemp;
-		*/
 		m_impMax = impMaxNew;
 	}
 }
@@ -218,7 +191,7 @@ ubyte* MGetTempMemory(size_t cByte)
 //
 // See MemoryPool.h for more details
 //
-void MFreeAllTempMemory()
+void MFreeAllTempMemory() nothrow
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
