@@ -141,7 +141,3 @@ void MFreeAllTempMemory() nothrow
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
-
-void* GetTempMemory(size_t size) {
-	return MGetTempMemory(size);
-}
