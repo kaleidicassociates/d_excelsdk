@@ -147,7 +147,7 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
             static assert(false, "Unsupported type " ~ T.stringof);
     }
 
-    wstring retType = typeToString!(ReturnType!F);
+    auto retType = typeToString!(ReturnType!F);
     foreach(argType; Parameters!F)
         retType ~= typeToString!(argType);
 

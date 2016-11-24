@@ -25,7 +25,7 @@
 */
 module xlld.memorymanager;
 
-__gshared void* vpmm;
+private __gshared MemoryManager vpmm;
 
 
 //
@@ -57,8 +57,6 @@ struct MemoryManager
 	//
 	static MemoryManager* GetManager() nothrow @nogc
 	{
-            static MemoryManager vpmm;
-            static bool init;
             return &vpmm;
         }
 
