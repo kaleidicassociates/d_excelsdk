@@ -1,87 +1,84 @@
 /**
   framework.d
   Translated from framework.c by Laeeth Isharc
+  This version is built around Andrei Alexandrescu's allocator
 
    Purpose:	Framework library for Microsoft Excel.
 
-       This library provides some basic functions
-       that help in writing Excel DLLs. It includes
-       simple functions for managing memory with XLOPER12s,
-       creating temporary XLOPER12s, robustly calling
-       Excel12(), and outputting debugging strings
-       to the debugger for the current application.
+	   This library provides some basic functions
+	   that help in writing Excel DLLs. It includes
+	   simple functions for managing memory with XLOPER12s,
+	   creating temporary XLOPER12s, robustly calling
+	   Excel12(), and outputting debugging strings
+	   to the debugger for the current application.
 
-       The main purpose of this library is to help
-       you to write cleaner C code for calling Excel.
-       For example, using the framework library you
-       can write
+	   The main purpose of this library is to help
+	   you to write cleaner C code for calling Excel.
+	   For example, using the framework library you
+	   can write
 
-           Excel12f(xlcDisplay, 0, 2, TempMissing12(), TempBool12(0));
+		   Excel12f(xlcDisplay, 0, 2, tempMissing12(), tempBool12(0));
 
-       instead of the more verbose
+	   instead of the more verbose
 
-           XLOPER12 xMissing, bool_;
-           xMissing.xltype = xltypeMissing;
-           bool_.xltype = xltypeBool;
-           bool_.val.bool_ = 0;
-           Excel12(xlcDisplay, 0, 2, (LPXLOPER12) &xMissing, (LPXLOPER12) &bool_);
+		   XLOPER12 xMissing, bool_;
+		   xMissing.xltype = xltypeMissing;
+		   bool_.xltype = xltypeBool;
+		   bool_.val.bool_ = 0;
+		   Excel12(xlcDisplay, 0, 2, (LPXLOPER12) &xMissing, (LPXLOPER12) &bool_);
 
 
-       The library is non-reentrant.
+	   The library is non-reentrant.
 
-       Define _DEBUG to use the debugging functions.
+	   Define _DEBUG to use the debugging functions.
 
-       Source code is provided so that you may
-       enhance this library or optimize it for your
-       own application.
+	   Source code is provided so that you may
+	   enhance this library or optimize it for your
+	   own application.
 
    Platform:    Microsoft Windows
 
    Functions:
-                debugPrintf
-                GetTempMemory
-                FreeAllTempMemory
-                Excel
-                Excel12f
-                TempNum
-                TempNum12
-                TempStr
-                TempStrConst
-                TempStr12
-                TempBool
-                TempBool12
-                TempInt
-                TempInt12
-                TempErr
-                TempErr12
-                TempActiveRef
-                TempActiveRef12
-                TempActiveCell
-                TempActiveCell12
-                TempActiveRow
-                TempActiveRow12
-                TempActiveColumn
-                TempActiveColumn12
-                TempMissing
-                TempMissing12
-                InitFramework
-				QuitFramework
+				debugPrintf
+				getTempMemory
+				freeAllTempMemory
+				Excel
+				Excel12f
+				TempNum
+				TempNum12
+				tempStr
+				tempStrConst
+				tempStr12
+				tempBool
+				tempBool12
+				tempInt
+				tempInt12
+				tempErr
+				tempErr12
+				tempActiveRef
+				tempActiveRef12
+				tempActiveCell
+				tempActiveCell12
+				tempActiveRow
+				tempActiveRow12
+				tempActiveColumn
+				tempActiveColumn12
+				tempMissing
+				tempMissing12
+				initFramework
+				quitFramework
 
 */
 module xlld.framework;
 
-version(Windows):
-
-debug=0;
-
 import core.sys.windows.windows;
-//import std.c.windows.windows;
 import xlld.xlcall;
 import xlld.xlcallcpp;
+import xlld.memorymanager;
 import core.stdc.string;
 import core.stdc.stdlib:malloc,free;
-import xlld.memorymanager;
-import xlld.memorypool;
+import std.experimental.allocator;
+import std.typecons: Flag, Yes;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
@@ -98,12 +95,12 @@ static if(false) // debug
 	   debugPrintf()
 
 	   Purpose:
-	        sends a string to the debugger for the current application.
+			sends a string to the debugger for the current application.
 
 	   Parameters:
 
-	        LPSTR lpFormat  The format definition string
-	        ...             The values to print
+			LPSTR lpFormat  The format definition string
+			...             The values to print
 
 	   Returns:
 
@@ -123,109 +120,36 @@ static if(false) // debug
 	}
 }
 
-/**
-   GetTempMemory()
-
-   Purpose:
-         Allocates temporary memory. Temporary memory
-         can only be freed in one chunk, by calling
-         FreeAllTempMemory(). This is done by Excel12f().
-
-   Parameters:
-
-        size_t cBytes      How many bytes to allocate
-
-   Returns:
-
-        LPSTR           A pointer to the allocated memory,
-                        or 0 if more memory cannot be
-                        allocated. If this fails,
-                        check that MEMORYSIZE is big enough
-                        in MemoryPool.h and that you have
-                        remembered to call FreeAllTempMemory
-
-   Comments:
-
-  	Algorithm:
-
-        The memory allocation algorithm is extremely
-        simple: on each call, allocate the next cBytes
-        bytes of a static memory buffer. If the buffer
-        becomes too full, simply fail. To free memory,
-        simply reset the pointer (vOffsetMemBlock)
-        back to zero. This memory scheme is very fast
-        and is optimized for the assumption that the
-        only thing you are using temporary memory
-        for is to hold arguments while you call Excel12f().
-        We rely on the fact that you will free all the
-        temporary memory at the same time. We also
-        assume you will not need more memory than
-        the amount required to hold a few arguments
-        to Excel12f().
-
-        Note that the memory allocation algorithm
-        now supports multithreaded applications by
-        giving each unique thread its own static
-        block of memory. This is handled in the
-        MemoryManager.cpp file automatically.
-
-*/
-extern(Windows) ubyte* GetTempMemory(size_t cBytes)
-{
-	return MGetTempMemory(cBytes);
-}
-
-/**
-   FreeAllTempMemory()
-
-   Purpose:
-
-        Frees all temporary memory that has been allocated
-        for the current thread
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-
-*/
-
-extern(Windows) void FreeAllTempMemory() nothrow
-{
-	MFreeAllTempMemory();
-}
 
 /**
    Excel()
 
    Purpose:
-        A fancy wrapper for the Excel4() function. It also
-        does the following:
+		A fancy wrapper for the Excel4() function. It also
+		does the following:
 
-        (1) Checks that none of the LPXLOPER arguments are 0,
-            which would indicate that creating a temporary XLOPER
-            has failed. In this case, it doesn't call Excel
-            but it does print a debug message.
-        (2) If an error occurs while calling Excel,
-            print a useful debug message.
-        (3) When done, free all temporary memory.
+		(1) Checks that none of the LPXLOPER arguments are 0,
+			which would indicate that creating a temporary XLOPER
+			has failed. In this case, it doesn't call Excel
+			but it does print a debug message.
+		(2) If an error occurs while calling Excel,
+			print a useful debug message.
+		(3) When done, free all temporary memory.
 
-        #1 and #2 require _DEBUG to be defined.
+		#1 and #2 require _DEBUG to be defined.
 
    Parameters:
 
-        int xlfn            Function number (xl...) to call
-        LPXLOPER pxResult   Pointer to a place to stuff the result,
-                            or 0 if you don't care about the result.
-        int count           Number of arguments
-        ...                 (all LPXLOPERs) - the arguments.
+		int xlfn            Function number (xl...) to call
+		LPXLOPER pxResult   Pointer to a place to stuff the result,
+							or 0 if you don't care about the result.
+		int count           Number of arguments
+		...                 (all LPXLOPERs) - the arguments.
 
    Returns:
 
-        A return code (Some of the xlret... values, as defined
-        in XLCALL.H, OR'ed together).
+		A return code (Some of the xlret... values, as defined
+		in XLCALL.H, OR'ed together).
 
    Comments:
 */
@@ -234,7 +158,7 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 {
 	int xlret;
 
-	xlret = Excel4v(xlfn,pxResult,cast(int)args.length,cast(LPXLOPER *)args.ptr);
+	xlret = Excel4v(xlfn,pxResult,args.length,cast(LPXLOPER *)args.ptr);
 
 	static if(false) //debug
 	{
@@ -294,7 +218,7 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 		}
 	} // debug
 
-	FreeAllTempMemory();
+	excelCallPool.freeAll();
 
 	return xlret;
 }
@@ -303,40 +227,40 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
    Excel12f()
 
    Purpose:
-        A fancy wrapper for the Excel12() function. It also
-        does the following:
+		A fancy wrapper for the Excel12() function. It also
+		does the following:
 
-        (1) Checks that none of the LPXLOPER12 arguments are 0,
-            which would indicate that creating a temporary XLOPER12
-            has failed. In this case, it doesn't call Excel12
-            but it does print a debug message.
-        (2) If an error occurs while calling Excel12,
-            print a useful debug message.
-        (3) When done, free all temporary memory.
+		(1) Checks that none of the LPXLOPER12 arguments are 0,
+			which would indicate that creating a temporary XLOPER12
+			has failed. In this case, it doesn't call Excel12
+			but it does print a debug message.
+		(2) If an error occurs while calling Excel12,
+			print a useful debug message.
+		(3) When done, free all temporary memory.
 
-        #1 and #2 require _DEBUG to be defined.
+		#1 and #2 require _DEBUG to be defined.
 
    Parameters:
 
-        int xlfn            Function number (xl...) to call
-        LPXLOPER12 pxResult Pointer to a place to stuff the result,
-                            or 0 if you don't care about the result.
-        int count           Number of arguments
-        ...                 (all LPXLOPER12s) - the arguments.
+		int xlfn            Function number (xl...) to call
+		LPXLOPER12 pxResult Pointer to a place to stuff the result,
+							or 0 if you don't care about the result.
+		int count           Number of arguments
+		...                 (all LPXLOPER12s) - the arguments.
 
    Returns:
 
-        A return code (Some of the xlret... values, as defined
-        in XLCALL.H, OR'ed together).
+		A return code (Some of the xlret... values, as defined
+		in XLCALL.H, OR'ed together).
 
    Comments:
 */
 
-int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
+int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow @nogc
 {
 	int xlret;
 
-	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
+	xlret = Excel12v(xlfn,pxResult,args.length, cast(LPXLOPER12 *)args.ptr);
 
 	static if(false) //debug
 	{
@@ -395,7 +319,7 @@ int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
 		}
 	} // debug
 
-	FreeAllTempMemory();
+	excelCallPool.freeAll();
 
 	return xlret;
 }
@@ -406,34 +330,34 @@ int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
    TempNum()
 
    Purpose:
-        Creates a temporary numeric (IEEE floating point) XLOPER.
+		Creates a temporary numeric (IEEE floating point) XLOPER.
 
    Parameters:
 
-        double d        The value
+		double d        The value
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempNum(double d)
+
+LPXLOPER TempNum(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(double d)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
-
-	if (!lpx)
-	{
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER(1);
+	if (lpx is null)
 		return null;
-	}
 
 	lpx.xltype = xltypeNum;
 	lpx.val.num = d;
-
 	return lpx;
 }
 
@@ -441,600 +365,636 @@ LPXLOPER TempNum(double d)
    TempNum12()
 
    Purpose:
-        Creates a temporary numeric (IEEE floating point) XLOPER12.
+		Creates a temporary numeric (IEEE floating point) XLOPER12.
 
    Parameters:
 
-        double d        The value
+		double d        The value
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
 
 */
 
-LPXLOPER12 TempNum12(double d)
+LPXLOPER12 TempNum12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(double d)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER12(1);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lpx.xltype = xltypeNum;
 	lpx.val.num = d;
-
 	return lpx;
 }
 
 /**
-   TempStr()
+   tempStr()
 
    Purpose:
-        Creates a temporary string XLOPER
+		Creates a temporary string XLOPER
 
    Parameters:
 
-        LPSTR lpstr     The string, as a null-terminated
-                        C string, with the first byte
-                        undefined. This function will
-                        count the bytes of the string
-                        and insert that count in the
-                        first byte of lpstr. Excel cannot
-                        handle strings longer than 255
-                        characters.
+		LPSTR lpstr     The string, as a null-terminated
+						C string, with the first byte
+						undefined. This function will
+						count the bytes of the string
+						and insert that count in the
+						first byte of lpstr. Excel cannot
+						handle strings longer than 255
+						characters.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        (1) This function has the side effect of inserting
-            the byte count as the first character of
-            the created string.
+		(1) This function has the side effect of inserting
+			the byte count as the first character of
+			the created string.
 
-        (2) For highest speed, with constant strings,
-            you may want to manually count the length of
-            the string before compiling, and then avoid
-            using this function.
+		(2) For highest speed, with constant strings,
+			you may want to manually count the length of
+			the string before compiling, and then avoid
+			using this function.
 
-        (3) Behavior is undefined for non-null terminated
-            input or strings longer than 255 characters.
+		(3) Behavior is undefined for non-null terminated
+			input or strings longer than 255 characters.
 
-   Note: If lpstr passed into TempStr is readonly, TempStr
+   Note: If lpstr passed into tempStr is readonly, tempStr
    will crash your XLL as it will try to modify a read only
    string in place. strings declared on the stack as described below
    are read only by default in VC++
 
    char *str = " I am a string"
 
-   Use extreme caution while calling TempStr on such strings. Refer to
+   Use extreme caution while calling tempStr on such strings. Refer to
    VC++ documentation for complier options to ensure that these strings
-   are compiled as read write or use TempStrConst instead.
+   are compiled as read write or use tempStrConst instead.
 
-   TempStr is provided mainly for backwards compatability and use of
-   TempStrConst is encouraged going forward.
+   tempStr is provided mainly for backwards compatability and use of
+   tempStrConst is encouraged going forward.
 */
 
-LPXLOPER TempStr(LPSTR lpstr)
+LPXLOPER12 tempStr(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(LPSTR lpstr)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER(1);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lpstr[0] = cast(BYTE) strlen (lpstr+1);
 	lpx.xltype = xltypeStr;
 	lpx.val.str = lpstr;
-
 	return lpx;
 }
 
 
 /**
-   TempStrConst()
+   tempStrConst()
 
    Purpose:
-        Creates a temporary string XLOPER from a
-        const string with a local copy in temp memory
+		Creates a temporary string XLOPER from a
+		const string with a local copy in temp memory
 
    Parameters:
 
-        LPSTR lpstr     The string, as a null-terminated
-                        C string. This function will
-                        count the bytes of the string
-                        and insert that count in the
-                        first byte of the temp string.
-                        Excel cannot handle strings
-                        longer than 255 characters.
+		LPSTR lpstr     The string, as a null-terminated
+						C string. This function will
+						count the bytes of the string
+						and insert that count in the
+						first byte of the temp string.
+						Excel cannot handle strings
+						longer than 255 characters.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Will take a string of the form "abc\0" and make a
-        temp XLOPER of the form "\003abc"
+		Will take a string of the form "abc\0" and make a
+		temp XLOPER of the form "\003abc"
 
 */
 
-LPXLOPER TempStrConst(const LPSTR lpstr)
+LPXLOPER tempStrConst(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(const LPSTR lpstr)
 {
 	LPXLOPER lpx;
 	LPSTR lps;
-	size_t len;
+	size_t len=strlen(lpstr);
 
-	len = strlen(lpstr);
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof+len+1);
+	else
+		lpx=cast(LPXLOPER) theAllocator.allocate.make!ubyte(XLOPER.sizeof+len+1);
 
-	lpx = cast(LPXLOPER) (GetTempMemory(XLOPER.sizeof) + len+1);
-
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lps = cast(LPSTR)lpx + XLOPER.sizeof;
-
 	lps[0] = cast(BYTE)len;
-	//can't strcpy_s because of removal of null-termination
-	memcpy_s( cast(ubyte*)lps+1, cast(uint)len+1, cast(ubyte*)lpstr, cast(uint)len);
+	lps[1..len+1]=lpstr[0..len];
 	lpx.xltype = xltypeStr;
 	lpx.val.str = lps;
-
 	return lpx;
 }
 
 /**
-   TempStr12()
+   tempStr12()
 
    Purpose:
-        Creates a temporary string XLOPER12 from a
-        unicode const string with a local copy in
-        temp memory
+		Creates a temporary string XLOPER12 from a
+		unicode const string with a local copy in
+		temp memory
 
    Parameters:
 
-        wchar lpstr     The string, as a null-terminated
-                        unicode string. This function will
-                        count the bytes of the string
-                        and insert that count in the
-                        first byte of the temp string.
+		wchar lpstr     The string, as a null-terminated
+						unicode string. This function will
+						count the bytes of the string
+						and insert that count in the
+						first byte of the temp string.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        (1) Fix for const string pointers being passed in to TempStr.
-            Note it assumes NO leading space
+		(1) Fix for const string pointers being passed in to tempStr.
+			Note it assumes NO leading space
 
-        (2) Also note that XLOPER12 now uses unicode for the string
-            operators
+		(2) Also note that XLOPER12 now uses unicode for the string
+			operators
 
-        (3) Will remove the null-termination on the string
+		(3) Will remove the null-termination on the string
 
 
 
-   Note: TempStr12 is different from TempStr and is more like TempStrConst
+   Note: tempStr12 is different from tempStr and is more like tempStrConst
    in its behavior. We have consciously made this choice and deprecated the
-   behavior of TempStr going forward. Refer to the note in comment section
-   for TempStr to better understand this design decision.
+   behavior of tempStr going forward. Refer to the note in comment section
+   for tempStr to better understand this design decision.
 */
 
-LPXLOPER12[] TempStr12(in wstring[] strings)
+LPXLOPER12[] tempStr12(wstring[] strings)
 {
   LPXLOPER12[] ret;
   ret.length=strings.length;
   foreach(i,str;strings)
-    ret[i]=strings[i].TempStr12;
+	ret[i]=strings[i].tempStr12;
   return ret;
 }
 
-wchar* makePascalString(wchar* str)
+wchar[] makePascalString(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(wstring str)
 {
-	auto len=lstrlenW(str);
-	auto lpx=GetTempMemory((len+1)*2);
-	if (lpx is null)
+	wchar[] buf;
+	static if(autoFree)
+		buf = cast(wchar[0..len]) excelCallPool.allocate(2*(str.length+1));
+	else
+		buf= theAllocator.makeArray!wchar(str.length+1);
+	if (buf is null || buf.length==0)
 		return null;
-	auto lps=cast(wchar*)(cast(CHAR*)lpx);
-	lps[0]=cast(BYTE)len;
-	wmemcpy_s( lps+1, len+1, str, len);
-	return lps;
+	buf[0]=cast(wchar)str.length;
+	buf[1..$]=str[1..$];
+	return buf;
 }
 
-LPXLOPER12 TempStr12(wstring lpstr)
+wchar* makePascalString(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(wchar* str)
+{
+	wchar* buf;
+	auto len=lstrlenW(str);
+	static if(autoFree)
+		buf = cast(wchar*) excelCallPool.allocate((len+1)*2);
+	else
+		buf= theAllocator.allocate.make!wchar(len+1);
+	if (buf is null)
+		return null;
+	buf[0]=cast(wchar)len;
+	buf[1..len]=str[1..len];
+	return buf;
+}
+
+LPXLOPER12 tempStr12(Flag!"autoFree" autoFree = Yes.autoFree)(wstring lpstr)
 {
 	LPXLOPER12 lpx;
 	wchar* lps;
-	int len=cast(int)lpstr.length;
+	size_t len=lpstr.length;
 
-	lpx = cast(LPXLOPER12) (GetTempMemory(XLOPER12.sizeof + (len+1)*2));
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof+(len+1)*2);
+	else
+		lpx=cast(LPXLOPER12) theAllocator.allocate.make!ubyte(XLOPER12.sizeof+(len+1)*2);
 
 	if (lpx is null)
-	{
 		return null;
-	}
 
 	lps = cast(wchar*)((cast(ubyte*)lpx + XLOPER12.sizeof));
-
 	lps[0] = cast(wchar)len;
-	//can't wcscpy_s because of removal of null-termination
-	wmemcpy_s( lps+1, len+1, lpstr.ptr, len);
+	lps[1..len+1]=lpstr[0..$];
 	lpx.xltype = xltypeStr;
 	lpx.val.str = lps;
-
 	return lpx;
 }
 
-LPXLOPER12 TempStr12(const(wchar*) lpstr)
+LPXLOPER12 tempStr12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(immutable(wchar*) lpstr)
 {
 	LPXLOPER12 lpx;
 	wchar* lps;
-	int len;
+	size_t len=lstrlenW(lpstr);
 
-	len = lstrlenW(lpstr);
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof+(len+1)*2);
+	else
+		lpx=cast(LPXLOPER12) theAllocator.allocate.make!ubyte(XLOPER12.sizeof+(len+1)*2);
 
-	lpx = cast(LPXLOPER12) (GetTempMemory(XLOPER12.sizeof) + (len+1)*2);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
 
-	lps = cast(wchar*)((cast(CHAR*)lpx + XLOPER12.sizeof));
-
-	lps[0] = cast(BYTE)len;
-	//can't wcscpy_s because of removal of null-termination
-	wmemcpy_s( lps+1, len+1, lpstr, len);
+	lps = cast(wchar*)((cast(ubyte*)lpx + XLOPER12.sizeof));
+	lps[0] = cast(wchar)len;
+	lps[1..len+1]=lpstr[0..$];
 	lpx.xltype = xltypeStr;
 	lpx.val.str = lps;
-
 	return lpx;
 }
 
 /**
-   TempBool()
+   tempBool()
 
    Purpose:
-        Creates a temporary logical (true/false) XLOPER.
+		Creates a temporary logical (true/false) XLOPER.
 
    Parameters:
 
-        int b           0 - for a false XLOPER
-                        Anything else - for a true XLOPER
+		int b           0 - for a false XLOPER
+						Anything else - for a true XLOPER
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempBool(int b)
+LPXLOPER tempBool(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(bool b)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER(1);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lpx.xltype = xltypeBool;
 	lpx.val.bool_ = b?1:0;
 	return lpx;
 }
 
 /**
-   TempBool12()
+   tempBool12()
 
    Purpose:
-        Creates a temporary logical (true/false) XLOPER12.
+		Creates a temporary logical (true/false) XLOPER12.
 
    Parameters:
 
-        BOOL b          0 - for a false XLOPER12
-                        Anything else - for a true XLOPER12
+		BOOL b          0 - for a false XLOPER12
+						Anything else - for a true XLOPER12
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER12 TempBool12(BOOL b)
+LPXLOPER12 tempBool12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(bool b)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER12(1);
 
-	if (!lpx)
-	{
-		return cast(LPXLOPER12)0;
-	}
-
+	if (lpx is null)
+		return null;
 	lpx.xltype = xltypeBool;
 	lpx.val.bool_ = b?1:0;
-
 	return lpx;
 }
 
+
 /**
-   TempInt()
+   tempInt()
 
    Purpose:
-        Creates a temporary integer XLOPER.
+		Creates a temporary integer XLOPER.
 
    Parameters:
 
-        short int i     The integer
+		short int i     The integer
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempInt(short i)
+
+LPXLOPER tempInt(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(short i)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER(1);
 
-	if (!lpx)
-	{
-		return cast(LPXLOPER)0;
-	}
-
+	if (lpx is null)
+		return null;
 	lpx.xltype = xltypeInt;
 	lpx.val.w = i;
-
 	return lpx;
 }
 
+
 /**
-   TempInt12()
+   tempInt12()
 
    Purpose:
-            Creates a temporary integer XLOPER12.
+			Creates a temporary integer XLOPER12.
 
    Parameters:
 
-        int i           The integer
+		int i           The integer
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Note that the int oper has increased in size from
-        short int up to int in the 12 opers
+		Note that the int oper has increased in size from
+		short int up to int in the 12 opers
 */
 
-LPXLOPER12 TempInt12(int i)
+LPXLOPER12 tempInt12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(int i)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER12(1);
 
-	if (!lpx)
-	{
-		return cast(LPXLOPER12)0;
-	}
-
+	if (lpx is null)
+		return null;
 	lpx.xltype = xltypeInt;
 	lpx.val.w = i;
-
 	return lpx;
 }
 
+
 /**
-   TempErr()
+   tempErr()
 
    Purpose:
-        Creates a temporary error XLOPER.
+		Creates a temporary error XLOPER.
 
    Parameters:
 
-        WORD err        The error code. One of the xlerr...
-                        constants, as defined in XLCALL.H.
-                        See the Excel user manual for
-                        descriptions about the interpretation
-                        of various error codes.
+		WORD err        The error code. One of the xlerr...
+						constants, as defined in XLCALL.H.
+						See the Excel user manual for
+						descriptions about the interpretation
+						of various error codes.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempErr(WORD err)
+LPXLOPER12 tempErr(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(WORD err)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER(1);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lpx.xltype = xltypeErr;
 	lpx.val.err = err;
-
 	return lpx;
 }
 
 /**
-   TempErr12()
+   tempErr12()
 
    Purpose:
-        Creates a temporary error XLOPER12.
+		Creates a temporary error XLOPER12.
 
    Parameters:
 
-        int err         The error code. One of the xlerr...
-                        constants, as defined in XLCALL.H.
-                        See the Excel user manual for
-                        descriptions about the interpretation
-                        of various error codes.
+		int err         The error code. One of the xlerr...
+						constants, as defined in XLCALL.H.
+						See the Excel user manual for
+						descriptions about the interpretation
+						of various error codes.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Note the paramater has changed from a WORD to an int
-        in the new 12 operators
+		Note the paramater has changed from a WORD to an int
+		in the new 12 operators
 */
 
-LPXLOPER12 TempErr12(int err)
+LPXLOPER12 tempErr12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(int err)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	static if(autoFree)
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+	else
+		lpx=theAllocator.allocate.make!XLOPER12(1);
 
-	if (!lpx)
-	{
+	if (lpx is null)
 		return null;
-	}
-
 	lpx.xltype = xltypeErr;
 	lpx.val.err = err;
-
 	return lpx;
 }
 
 /**
-   TempActiveRef()
+   tempActiveRef()
 
    Purpose:
-        Creates a temporary rectangular reference to the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary rectangular reference to the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        WORD rwFirst    (0 based) The first row in the rectangle.
-        WORD rwLast     (0 based) The last row in the rectangle.
-        BYTE colFirst   (0 based) The first column in the rectangle.
-        BYTE colLast    (0 based) The last column in the rectangle.
+		WORD rwFirst    (0 based) The first row in the rectangle.
+		WORD rwLast     (0 based) The last row in the rectangle.
+		BYTE colFirst   (0 based) The first column in the rectangle.
+		BYTE colLast    (0 based) The last column in the rectangle.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempActiveRef(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
+LPXLOPER tempActiveRef(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(WORD rwFirst,WORD rwLast,BYTE colFirst,BYTE colLast)
 {
-	LPXLOPER lpx;
+	LPXLOPER12 lpx;
 	LPXLMREF lpmref;
 	int wRet;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
-	lpmref = cast(LPXLMREF) GetTempMemory(XLMREF.sizeof);
-
-	if (!lpmref)
+	static if(autoFree)
 	{
-		return null;
-	}
-
-
-	/* calling Excel() instead of Excel4() would free all temp memory! */
-	wRet = Excel4(xlSheetId, lpx, 0);
-
-	if (wRet != xlretSuccess)
-	{
-		return null;
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+		if (lpx is null)
+			return null;
+		lpmref=cast(LPXLMREF) excelCallPool.allocate(XLMREF.sizeof);
+		if (lpmref is null)
+			return null; // can't free but will be freed after next call to excel
 	}
 	else
 	{
-		lpx.xltype = xltypeRef;
-		lpx.val.mref.lpmref = lpmref;
+		lpx=theAllocator.allocate.make!XLOPER(1);
+		if (lpx is null)
+			return null;
+		lpmref=theAllocator.allocate.make!XLMREF(1);
+		if (lpmref is null)
+		{
+			theAllocator.dispose(lpx);
+			return null;
+		}
+	}
+
+	/* calling Excel() instead of Excel() would free all temp memory! */
+	wRet = Excel4(xlSheetId, lpx, []);
+
+	if (wRet != xlretSuccess)
+	{
+		static if(autoFree)
+		{
+			theAllocator.dispose(lpmref);
+			theAllocator.dispose(lpx);
+		}
+	   return null;
+	}
+	else
+	{
+		lpx.xltype = xltypeRef; // don't forget to set bit to free it later
+		lpx.val.mref.lpmref = cast(LPXLMREF)lpmref;
 		lpmref.count = 1;
 		lpmref.reftbl[0].rwFirst = rwFirst;
 		lpmref.reftbl[0].rwLast = rwLast;
 		lpmref.reftbl[0].colFirst = colFirst;
 		lpmref.reftbl[0].colLast = colLast;
-
 		return lpx;
 	}
 }
 
 
+
 /**
-   TempActiveRef12()
+   tempActiveRef12()
 
    Purpose:
-        Creates a temporary rectangular reference to the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary rectangular reference to the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        RW rwFirst      (0 based) The first row in the rectangle.
-        RW rwLast       (0 based) The last row in the rectangle.
-        COL colFirst    (0 based) The first column in the rectangle.
-        COL colLast     (0 based) The last column in the rectangle.
+		RW rwFirst      (0 based) The first row in the rectangle.
+		RW rwLast       (0 based) The last row in the rectangle.
+		COL colFirst    (0 based) The first column in the rectangle.
+		COL colLast     (0 based) The last column in the rectangle.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Note that the formal parameters have changed for Excel 2007
-        The valid size has increased to accomodate the increase
-        in Excel 2007 workbook sizes
+		Note that the formal parameters have changed for Excel 2007
+		The valid size has increased to accomodate the increase
+		in Excel 2007 workbook sizes
 */
 
-LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
+LPXLOPER12 tempActiveRef12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
 {
 	LPXLOPER12 lpx;
 	LPXLMREF12 lpmref;
 	int wRet;
 
-	lpx = cast(LPXLOPER12)  GetTempMemory(XLOPER12.sizeof)[0..XLOPER12.sizeof];
-	lpmref = cast(LPXLMREF12) GetTempMemory(XLMREF12.sizeof)[0..XLOPER12.sizeof];
-
-	if (lpmref is cast(LPXLMREF12)0)
+	static if(autoFree)
 	{
-		return null;
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+		if (lpx is null)
+			return null;
+		lpmref=cast(LPXLMREF12) excelCallPool.allocate(XLMREF12.sizeof);
+		if (lpmref is null)
+			return null; // can't free but will be freed after next call to excel
+	}
+	else
+	{
+		lpx=theAllocator.allocate.make!XLOPER12(1);
+		if (lpx is null)
+			return null;
+		lpmref=theAllocator.allocate.make!XLMREF12(1);
+		if (lpmref is null)
+		{
+			theAllocator.dispose(lpx);
+			return null;
+		}
 	}
 
 	/* calling Excel12f() instead of Excel12() would free all temp memory! */
@@ -1042,268 +1002,281 @@ LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
 
 	if (wRet != xlretSuccess)
 	{
+		static if(autoFree)
+		{
+			theAllocator.dispose(lpmref);
+			theAllocator.dispose(lpx);
+		}
 	   return null;
 	}
 	else
 	{
-		lpx.xltype = xltypeRef;
+		lpx.xltype = xltypeRef; // don't forget to set bit to free it later
 		lpx.val.mref.lpmref = cast(LPXLMREF12)lpmref;
 		lpmref.count = 1;
 		lpmref.reftbl[0].rwFirst = rwFirst;
 		lpmref.reftbl[0].rwLast = rwLast;
 		lpmref.reftbl[0].colFirst = colFirst;
 		lpmref.reftbl[0].colLast = colLast;
-
 		return lpx;
 	}
 }
 
 /**
-   TempActiveCell()
+   tempActiveCell()
 
    Purpose:
-        Creates a temporary reference to a single cell on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to a single cell on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        WORD rw         (0 based) The row of the cell.
-        BYTE col        (0 based) The column of the cell.
+		WORD rw         (0 based) The row of the cell.
+		BYTE col        (0 based) The column of the cell.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempActiveCell(WORD rw, BYTE col)
+LPXLOPER tempActiveCell(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(WORD rw, BYTE col)
 {
-	return TempActiveRef(rw, rw, col, col);
+	return tempActiveRef!autoFree(rw, rw, col, col);
 }
 
 /**
-   TempActiveCell12()
+   tempActiveCell12()
 
    Purpose:
-        Creates a temporary reference to a single cell on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to a single cell on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        RW rw           (0 based) The row of the cell.
-        COL col         (0 based) The column of the cell.
+		RW rw           (0 based) The row of the cell.
+		COL col         (0 based) The column of the cell.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Paramter types changed to RW and COL to accomodate the increase
-        in sheet sizes introduced in Excel 2007
+		Paramter types changed to RW and COL to accomodate the increase
+		in sheet sizes introduced in Excel 2007
 */
 
-LPXLOPER12 TempActiveCell12(RW rw, COL col)
+LPXLOPER12 tempActiveCell12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(RW rw, COL col)
 {
-	return TempActiveRef12(rw, rw, col, col);
+	return tempActiveRef12!autoFree(rw, rw, col, col);
 }
 
 /**
-   TempActiveRow()
+   tempActiveRow()
 
    Purpose:
-        Creates a temporary reference to an entire row on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to an entire row on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        RW rw           (0 based) The row.
+		RW rw           (0 based) The row.
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 */
 
-LPXLOPER TempActiveRow(WORD rw)
+LPXLOPER tempActiveRow(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(WORD rw)
 {
-	return TempActiveRef(rw, rw, 0, 0xFF);
+	return tempActiveRef!autoFree(rw, rw, 0, 0xFF);
 }
 
 /**
-   TempActiveRow12()
+   tempActiveRow12()
 
    Purpose:
-        Creates a temporary reference to an entire row on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to an entire row on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        RW rw           (0 based) The row.
+		RW rw           (0 based) The row.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Paramter type change to RW to accomodate the increase in sheet
-        sizes introduced in Excel 2007
+		Paramter type change to RW to accomodate the increase in sheet
+		sizes introduced in Excel 2007
 */
 
-LPXLOPER12 TempActiveRow12(RW rw)
+LPXLOPER12 tempActiveRow12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(RW rw)
 {
-	return TempActiveRef12(rw, rw, 0, 0x00003FFF);
+	return tempActiveRef12!autoFree(rw, rw, 0, 0x00003FFF);
 }
 
 /**
-   TempActiveColumn()
+   tempActiveColumn()
 
    Purpose:
-        Creates a temporary reference to an entire column on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to an entire column on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        LPSTR s         First string
-        LPSTR t         Second string
+		LPSTR s         First string
+		LPSTR t         Second string
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 
 */
 
-LPXLOPER TempActiveColumn(BYTE col)
+LPXLOPER tempActiveColumn(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(BYTE col)
 {
-	return TempActiveRef(0, 0xFFFF, col, col);
+	return tempActiveRef!autoFree(0, 0xFFFF, col, col);
 }
 
 /**
-   TempActiveColumn12()
+   tempActiveColumn12()
 
    Purpose:
-        Creates a temporary reference to an entire column on the active
-        sheet. Remember that the active sheet is the sheet that
-        the user sees in front, not the sheet that is currently
-        being calculated.
+		Creates a temporary reference to an entire column on the active
+		sheet. Remember that the active sheet is the sheet that
+		the user sees in front, not the sheet that is currently
+		being calculated.
 
    Parameters:
 
-        COL col	        (0 based) The column.
+		COL col	        (0 based) The column.
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
-        Paramter type change to COL to accomodate the increase in sheet
-        sizes introduced in Excel 2007
+		Paramter type change to COL to accomodate the increase in sheet
+		sizes introduced in Excel 2007
 
 */
 
-LPXLOPER12 TempActiveColumn12(COL col)
+LPXLOPER12 tempActiveColumn12(Flag!"autoFree" autoFree=Flag.autoFree.Yes)(COL col)
 {
-	return TempActiveRef12(0, 0x000FFFFF, col, col);
+	return tempActiveRef12!autoFree(0, 0x000FFFFF, col, col);
 }
 
 
 /**
-   TempMissing()
+   tempMissing()
 
    Purpose:
-        This is used to simulate a missing argument when
-        calling Excel(). It creates a temporary
-        "missing" XLOPER.
+		This is used to simulate a missing argument when
+		calling Excel(). It creates a temporary
+		"missing" XLOPER.
 
    Parameters:
 
    Returns:
 
-        LPXLOPER        The temporary XLOPER, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER        The temporary XLOPER, or 0
+						if getTempMemory() failed.
 
    Comments:
 
 */
 
-LPXLOPER TempMissing()
+LPXLOPER tempMissing(Flag!"autoFree" autoFree = Yes.autoFree)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
-
-	if (!lpx)
+	if(autoFree)
 	{
-		return null;
+		lpx = cast(LPXLOPER) excelCallPool.allocate(XLOPER.sizeof);
+		if (lpx is null)
+			return null;
 	}
-
+	else
+	{
+		lpx=theAllocator.make!XLOPER();
+		if (lpx is null)
+			return null;
+	}
 	lpx.xltype = xltypeMissing;
-
 	return lpx;
 }
 
 /**
-   TempMissing12()
+   tempMissing12()
 
    Purpose:
-        This is used to simulate a missing argument when
-        calling Excel12f(). It creates a temporary
-        "missing" XLOPER12.
+		This is used to simulate a missing argument when
+		calling Excel12f(). It creates a temporary
+		"missing" XLOPER12.
 
    Parameters:
 
    Returns:
 
-        LPXLOPER12      The temporary XLOPER12, or 0
-                        if GetTempMemory() failed.
+		LPXLOPER12      The temporary XLOPER12, or 0
+						if getTempMemory() failed.
 
    Comments:
 
 */
 
-LPXLOPER12 TempMissing12()
+LPXLOPER12 tempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
-
-	if (!lpx)
+	if(Yes.autoFree)
 	{
-		return null;
+		lpx = cast(LPXLOPER12) excelCallPool.allocate(XLOPER12.sizeof);
+		if (lpx is null)
+			return null;
+	}
+	else
+	{
+		lpx=theAllocator.make!XLOPER12();
+		if (lpx is null)
+			return null;
 	}
 
 	lpx.xltype = xltypeMissing;
-
 	return lpx;
 }
 
 /**
-   InitFramework()
+   initFramework()
 
    Purpose:
-        Initializes all the framework functions.
+		Initializes all the framework functions.
 
    Parameters:
 
@@ -1313,16 +1286,16 @@ LPXLOPER12 TempMissing12()
 
 */
 
-void InitFramework()
+void initFramework()
 {
-	FreeAllTempMemory();
+	excelCallPool.freeAll();
 }
 
 /**
-   QuitFramework()
+   quitFramework()
 
    Purpose:
-        Cleans up for all framework functions.
+		Cleans up for all framework functions.
 
    Parameters:
 
@@ -1331,30 +1304,35 @@ void InitFramework()
    Comments:
 
 */
-void QuitFramework()
+void quitFramework()
 {
-	FreeAllTempMemory();
+	excelCallPool.freeAll();
+	excelCallPool.dispose();
 }
 
 /**
-   FreeXLOperT()
+   freeXLOper()
 
    Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER, assuming it has any memory associated with it
+		Will free any malloc'd memory associated with the given
+		LPXLOPER, assuming it has any memory associated with it
 
    Parameters:
 
-        LPXLOPER pxloper    Pointer to the XLOPER whose associated
-                            memory we want to free
+		LPXLOPER pxloper    Pointer to the XLOPER whose associated
+							memory we want to free
 
    Returns:
 
    Comments:
 
+   This should only be called for objects allocated with theAllocator
+   usually via setting xlfreebit.  Running on objects allocated by
+   memorymanager will not end well.
+
 */
 
-void FreeXLOperT(LPXLOPER pxloper)
+void freeXLOper(LPXLOPER pxloper)
 {
 	WORD xltype;
 	int cxloper;
@@ -1364,50 +1342,49 @@ void FreeXLOperT(LPXLOPER pxloper)
 
 	switch (xltype)
 	{
-  	case xltypeStr:
-  		if (pxloper.val.str !is null)
-  			free(pxloper.val.str);
-  		break;
-  	case xltypeRef:
-  		if (pxloper.val.mref.lpmref !is null)
-  			free(pxloper.val.mref.lpmref);
-  		break;
-  	case xltypeMulti:
-  		cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
-  		if (pxloper.val.array.lparray !is null)
-  		{
-  			pxloperFree = pxloper.val.array.lparray;
-  			while (cxloper > 0)
-  			{
-  				FreeXLOperT(pxloperFree);
-  				pxloperFree++;
-  				cxloper--;
-  			}
-  			free(pxloper.val.array.lparray);
-  		}
-  		break;
-  	case xltypeBigData:
-  		if (pxloper.val.bigdata.h.lpbData !is null)
-  			free(pxloper.val.bigdata.h.lpbData);
-  		break;
-
-    default: // todo: add error handling
-      break;
-    }
+		case xltypeStr:
+			if (pxloper.val.str !is null)
+				theAllocator.dispose(pxloper.val.str);
+			break;
+		case xltypeRef:
+			if (pxloper.val.mref.lpmref !is null)
+				theAllocator.dispose(pxloper.val.mref.lpmref);
+			break;
+		case xltypeMulti:
+			cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
+			if (pxloper.val.array.lparray !is null)
+			{
+				pxloperFree = pxloper.val.array.lparray;
+				while (cxloper > 0)
+				{
+					freeXLOper(pxloperFree);
+					pxloperFree++;
+					cxloper--;
+				}
+				theAllocator.dispose(pxloper.val.array.lparray);
+			}
+			break;
+		case xltypeBigData:
+			if (pxloper.val.bigdata.h.lpbData !is null)
+				theAllocator.dispose(pxloper.val.bigdata.h.lpbData);
+			break;
+		default: // todo: add error handling
+			break;
+	}
 }
 
 
 /**
-   FreeXLOper12T()
+   freeXLOper12()
 
    Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER12, assuming it has any memory associated with it
+		Will free any malloc'd memory associated with the given
+		LPXLOPER12, assuming it has any memory associated with it
 
    Parameters:
 
-        LPXLOPER12 pxloper12    Pointer to the XLOPER12 whose
-           	                    associated memory we want to free
+		LPXLOPER12 pxloper12    Pointer to the XLOPER12 whose
+								associated memory we want to free
 
    Returns:
 
@@ -1416,7 +1393,7 @@ void FreeXLOperT(LPXLOPER pxloper)
 */
 
 
-void FreeXLOper12T(LPXLOPER12 pxloper12)
+void freeXLOper12(LPXLOPER12 pxloper12)
 {
 	//DWORD xltype;
 	int cxloper12;
@@ -1426,60 +1403,60 @@ void FreeXLOper12T(LPXLOPER12 pxloper12)
 
 	switch (xltype)
 	{
-  	case xltypeStr:
-  		if (pxloper12.val.str !is null)
-  			free(pxloper12.val.str);
-  		break;
-  	case xltypeRef:
-  		if (pxloper12.val.mref.lpmref !is null)
-  			free(pxloper12.val.mref.lpmref);
-  		break;
-  	case xltypeMulti:
-  		cxloper12 = pxloper12.val.array.rows * pxloper12.val.array.columns;
-  		if (pxloper12.val.array.lparray)
-  		{
-  			pxloper12Free = pxloper12.val.array.lparray;
-  			while (cxloper12 > 0)
-  			{
-  				FreeXLOper12T(pxloper12Free);
-  				pxloper12Free++;
-  				cxloper12--;
-  			}
-  			free(pxloper12.val.array.lparray);
-  		}
-  		break;
-  	case xltypeBigData:
-  		if (pxloper12.val.bigdata.h.lpbData !is null)
-  			free(pxloper12.val.bigdata.h.lpbData);
-  		break;
+		case xltypeStr:
+			if (pxloper12.val.str !is null)
+				theAllocator.dispose(pxloper12.val.str);
+			break;
+		case xltypeRef:
+			if (pxloper12.val.mref.lpmref !is null)
+				theAllocator.dispose(pxloper12.val.mref.lpmref);
+			break;
+		case xltypeMulti:
+			cxloper12 = pxloper12.val.array.rows * pxloper12.val.array.columns;
+			if (pxloper12.val.array.lparray)
+			{
+				pxloper12Free = pxloper12.val.array.lparray;
+				while (cxloper12 > 0)
+				{
+					freeXLOper12(pxloper12Free);
+					pxloper12Free++;
+					cxloper12--;
+				}
+				theAllocator.dispose(pxloper12.val.array.lparray);
+			}
+			break;
+		case xltypeBigData:
+			if (pxloper12.val.bigdata.h.lpbData !is null)
+				theAllocator.dispose(pxloper12.val.bigdata.h.lpbData);
+			break;
 
-    default: // todo: add error handling
-      break;
-  }
+		default: // todo: add error handling
+		break;
+	}
 }
 
 
 /**
-   ConvertXLRefToXLRef12()
+   convertXLRefToXLRef12()
 
    Purpose:
-        Will attempt to convert an XLREF into the given XREF12
+		Will attempt to convert an XLREF into the given XREF12
 
    Parameters:
 
-        LPXLREF pxref       Pointer to the XLREF to copy
-        LPXLREF12 pxref12   Pointer to the XLREF12 to copy into
+		LPXLREF pxref       Pointer to the XLREF to copy
+		LPXLREF12 pxref12   Pointer to the XLREF12 to copy into
 
    Returns:
 
-        BOOL                true if the conversion succeeded, false otherwise
+		BOOL                true if the conversion succeeded, false otherwise
 
    Comments:
 
 */
 
 
-BOOL ConvertXLRefToXLRef12(LPXLREF pxref, LPXLREF12 pxref12)
+bool convertXLRefToXLRef12(LPXLREF pxref, LPXLREF12 pxref12)
 {
 	if (pxref.rwLast >= pxref.rwFirst && pxref.colLast >= pxref.colFirst)
 	{
@@ -1496,25 +1473,25 @@ BOOL ConvertXLRefToXLRef12(LPXLREF pxref, LPXLREF12 pxref12)
 }
 
 /**
-   ConvertXLRef12ToXLRef()
+   convertXLRef12ToXLRef()
 
    Purpose:
-        Will attempt to convert an XLREF12 into the given XLREF
+		Will attempt to convert an XLREF12 into the given XLREF
 
    Parameters:
 
-        LPXLREF12 pxref12   Pointer to the XLREF12 to copy
-        LPXLREF pxref       Pointer to the XLREF to copy into
+		LPXLREF12 pxref12   Pointer to the XLREF12 to copy
+		LPXLREF pxref       Pointer to the XLREF to copy into
 
    Returns:
 
-        BOOL                true if the conversion succeeded, false otherwise
+		BOOL                true if the conversion succeeded, false otherwise
 
    Comments:
 
 */
 
-BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
+bool convertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
 {
 	if (pxref12.rwLast >= pxref12.rwFirst && pxref12.colLast >= pxref12.colFirst)
 	{
@@ -1537,32 +1514,32 @@ BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
    XLOper12ToXLOper()
 
    Purpose:
-        Conversion routine used to convert from the new XLOPER12
-        to the old XLOPER.
+		Conversion routine used to convert from the new XLOPER12
+		to the old XLOPER.
 
    Parameters:
 
-        LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy
-        LPXLOPER pxloper        Pointer to the XLOPER to copy into
+		LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy
+		LPXLOPER pxloper        Pointer to the XLOPER to copy into
 
    Returns:
 
-        BOOL                    true if the conversion succeeded, false otherwise
+		BOOL                    true if the conversion succeeded, false otherwise
 
    Comments:
 
-        - The caller is responsible for freeing any memory associated with
-          the copy if the conversion is a success; FreeXOperT can be
-          used, or it may be done by hand.
+		- The caller is responsible for freeing any memory associated with
+		  the copy if the conversion is a success; FreeXOperT can be
+		  used, or it may be done by hand.
 
-        - If the conversion fails, any memory the method needed to malloc
-          up until the point of failure in the conversion will be freed
-          by the method itself during cleanup.
+		- If the conversion fails, any memory the method needed to malloc
+		  up until the point of failure in the conversion will be freed
+		  by the method itself during cleanup.
 */
 
-BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
+bool XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 {
-	BOOL fRet;
+	bool fRet;
 	BOOL fClean;
 	//DWORD xltype;
 	WORD cref;
@@ -1676,7 +1653,7 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 				pref = rgref;
 				while (cref > 0 && !fClean)
 				{
-					if (!ConvertXLRef12ToXLRef(pref12, pref))
+					if (!convertXLRef12ToXLRef(pref12, pref))
 					{
 						fClean = true;
 						cref = 0;
@@ -1710,7 +1687,7 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 		{
 			fRet = false;
 		}
-		else if (ConvertXLRef12ToXLRef(&pxloper12.val.sref.ref_, &pxloper.val.sref.ref_))
+		else if (convertXLRef12ToXLRef(&pxloper12.val.sref.ref_, &pxloper.val.sref.ref_))
 		{
 			pxloper.val.sref.count = 1;
 		}
@@ -1763,7 +1740,7 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 						fRet = false;
 						while (pxloperConv > rgxloperConv)
 						{
-							FreeXLOperT(pxloperConv);
+							freeXLOper(pxloperConv);
 							pxloperConv--;
 						}
 						free(rgxloperConv);
@@ -1800,7 +1777,7 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 		}
 		break;
   default:
-    break;
+	break;
 	}
 	if (fRet)
 	{
@@ -1813,27 +1790,27 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
    XLOperToXLOper12()
 
    Purpose:
-        Conversion routine used to convert from the old XLOPER
-        to the new XLOPER12.
+		Conversion routine used to convert from the old XLOPER
+		to the new XLOPER12.
 
    Parameters:
 
-        LPXLOPER pxloper        Pointer to the XLOPER to copy
-        LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy into
+		LPXLOPER pxloper        Pointer to the XLOPER to copy
+		LPXLOPER12 pxloper12    Pointer to the XLOPER12 to copy into
 
    Returns:
 
-        BOOL                    true if the conversion succeeded, false otherwise
+		BOOL                    true if the conversion succeeded, false otherwise
 
    Comments:
 
-        - The caller is responsible for freeing any memory associated with
-          the copy if the conversion is a success; FreeXLOper12T can be
-          used, or it may be done by hand.
+		- The caller is responsible for freeing any memory associated with
+		  the copy if the conversion is a success; freeXLOper12 can be
+		  used, or it may be done by hand.
 
-        - If the conversion fails, any memory the method needed to malloc
-          up until the point of failure in the conversion will be freed
-          by the method itself during cleanup.
+		- If the conversion fails, any memory the method needed to malloc
+		  up until the point of failure in the conversion will be freed
+		  by the method itself during cleanup.
 
 */
 
@@ -1925,7 +1902,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 			cref12 = pxloper.val.mref.lpmref.count;
 
 			auto tmp = XLMREF12.sizeof + XLREF12.sizeof*(cref12-1);
-      pmref12 = cast(LPXLMREF12) malloc(tmp)[0..tmp];
+	  pmref12 = cast(LPXLMREF12) malloc(tmp)[0..tmp];
 			if (pmref12 is cast(typeof(pmref12))0)
 			{
 				fRet = false;
@@ -1937,7 +1914,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 				pref12 = rgref12;
 				while (cref12 > 0 && !fClean)
 				{
-					if (!ConvertXLRefToXLRef12(pref, pref12))
+					if (!convertXLRefToXLRef12(pref, pref12))
 					{
 						fClean = true;
 						cref12 = 0;
@@ -1971,7 +1948,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 		{
 			fRet = false;
 		}
-		else if (ConvertXLRefToXLRef12(&pxloper.val.sref.ref_, &pxloper12.val.sref.ref_))
+		else if (convertXLRefToXLRef12(&pxloper.val.sref.ref_, &pxloper12.val.sref.ref_))
 		{
 			pxloper12.val.sref.count = 1;
 		}
@@ -2024,7 +2001,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 						fRet = false;
 						while (pxloper12Conv > rgxloper12Conv)
 						{
-							FreeXLOperT(pxloperConv);
+							freeXLOper(pxloperConv);
 							pxloperConv--;
 						}
 						free(rgxloper12Conv);
@@ -2061,7 +2038,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 		}
 		break;
   default:
-    break;
+	break;
 	}
 
 	if (fRet)
@@ -2078,8 +2055,8 @@ memcpy_s.c - contains memcpy_s routine
 
 
 Purpose:
-       memcpy_s() copies a source memory buffer to a destination buffer.
-       Overlapping buffers are not treated specially, so propagation may occur.
+	   memcpy_s() copies a source memory buffer to a destination buffer.
+	   Overlapping buffers are not treated specially, so propagation may occur.
 *******************************************************************************/
 
 
@@ -2108,60 +2085,49 @@ Purpose:
 *
 *******************************************************************************/
 
-int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
+private int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
 {
-    if (count == 0)
-        return 0;
+	if (count == 0)
+		return 0;
 
-    /* validation section */
-    if(dst !is null)
-      return -1;
-    if (src is null || sizeInBytes < count)
-    {
-        memset(dst, 0, sizeInBytes);
-        if(src is null)
-          return -1;
-        if(sizeInBytes>=count)
-          return -1;
-        return -1;
-    }
+	/* validation section */
+	if(dst !is null)
+	  return -1;
+	if (src is null || sizeInBytes < count)
+	{
+		memset(dst, 0, sizeInBytes);
+		if(src is null)
+		  return -1;
+		if(sizeInBytes>=count)
+		  return -1;
+		return -1;
+	}
 
-    memcpy(dst, src, count);
-    return 0;
+	memcpy(dst, src, count);
+	return 0;
 }
 
 
-int wmemcpy_s(wchar* dst, size_t numElements, const wchar* src, size_t count)
+private int wmemcpy_s(wchar* dst, size_t numElements, const wchar* src, size_t count)
 {
   auto sizeInBytes=numElements*wchar.sizeof;
-count=count*2;
-    if (count == 0)
-        return 0;
+	count=count*2;
+	if (count == 0)
+		return 0;
 
-    /* validation section */
-    if(dst is null)
-      return -1;
-    if (src is null || sizeInBytes < count)
-    {
-        memset(dst, 0, sizeInBytes);
-        if(src is null)
-          return -1;
-        if(sizeInBytes>=count)
-          return -1;
-        return -1;
-    }
+	/* validation section */
+	if(dst is null)
+	  return -1;
+	if (src is null || sizeInBytes < count)
+	{
+		memset(dst, 0, sizeInBytes);
+		if(src is null)
+		  return -1;
+		if(sizeInBytes>=count)
+		  return -1;
+		return -1;
+	}
 
-    memcpy(dst, src, count);
-    return 0;
-}
-
-
-extern(Windows) short CallerExample()
-{
-	XLOPER12 xRes;
-
-	Excel12(xlfCaller, &xRes, []);
-	Excel12(xlcSelect, cast(LPXLOPER12)0, [cast(LPXLOPER12)&xRes]);
-	Excel12(xlFree, cast(LPXLOPER12)0,  [cast(LPXLOPER12)&xRes]);
-	return 1;
+	memcpy(dst, src, count);
+	return 0;
 }
