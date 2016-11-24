@@ -38,7 +38,7 @@ struct MemoryPool
 
 	// An empty destructor - see reasoning below
 	//
-	~this()
+	~this() nothrow @nogc
 	{
 	}
 
@@ -81,7 +81,7 @@ struct MemoryPool
 	// Frees all the temporary memory by setting the index for
 	// available memory back to the beginning
 	//
-	void FreeAllTempMemory()
+	void FreeAllTempMemory() nothrow @nogc
 	{
 		m_ichOffsetMemBlock = 0;
 	}

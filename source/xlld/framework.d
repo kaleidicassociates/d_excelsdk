@@ -170,7 +170,6 @@ static if(false) // debug
         MemoryManager.cpp file automatically.
 
 */
-//extern(Windows) LPSTR GetTempMemory(size_t cBytes)
 extern(Windows) ubyte* GetTempMemory(size_t cBytes)
 {
 	return MGetTempMemory(cBytes);
@@ -193,7 +192,7 @@ extern(Windows) ubyte* GetTempMemory(size_t cBytes)
 
 */
 
-extern(Windows) void FreeAllTempMemory()
+extern(Windows) void FreeAllTempMemory() nothrow
 {
 	MFreeAllTempMemory();
 }
@@ -333,7 +332,7 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
    Comments:
 */
 
-int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) // cdecl
+int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
 {
 	int xlret;
 
