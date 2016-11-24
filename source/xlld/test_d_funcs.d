@@ -77,3 +77,26 @@ double[] FuncSliceTimes3(double[] arg) {
     import std.array;
     return arg.map!(a => a * 3).array;
 }
+
+string[] StringsToStrings(string[] args) {
+    import std.algorithm;
+    import std.array;
+    return args.map!(a => a ~ "foo").array;
+}
+
+string StringsToString(string[] args) {
+    import std.string;
+    return args.join(", ");
+}
+
+string StringToString(string arg) nothrow {
+    return arg ~ "bar";
+}
+
+private string shouldNotBeAProblem(string, string[]) nothrow {
+    return "";
+}
+
+string ManyToString(string arg0, string arg1, string arg2) nothrow {
+    return arg0 ~ arg1 ~ arg2;
+}
