@@ -27,7 +27,6 @@ import core.sys.windows.windows;
 //
 // Total amount of memory to allocate for all temporary XLOPERs
 //
-
 enum MEMORYSIZE=10240;
 
 struct MemoryPool
@@ -35,23 +34,6 @@ struct MemoryPool
 	uint m_dwOwner=cast(uint)-1;			// ID of ownning thread
 	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
 	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
-
-	// An empty destructor - see reasoning below
-	//
-	~this() nothrow @nogc
-	{
-	}
-
-	//
-	// Unable to delete the memory block when we delete the pool,
-	// as it may be still be in use due to a GrowPools() call; this
-	// method will actually delete the pool's memory
-	//
-
-	void ClearPool()
-	{
-		//delete [] m_rgchMemBlock;
-	}
 
 	//
 	// Advances the index forward by the given number of bytes.

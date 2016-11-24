@@ -81,7 +81,6 @@ import xlld.xlcallcpp;
 import core.stdc.string;
 import core.stdc.stdlib:malloc,free;
 import xlld.memorymanager;
-import xlld.memorypool;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
