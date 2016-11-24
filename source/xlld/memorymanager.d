@@ -38,7 +38,51 @@ version (Windows) {
 		return cast(uint)Thread.getThis().id;
 	}
 }
-import xlld.memorypool;
+
+//
+// Total amount of memory to allocate for all temporary XLOPERs
+//
+enum MEMORYSIZE=10240;
+
+struct MemoryPool
+{
+	uint m_dwOwner=cast(uint)-1;			// ID of ownning thread
+	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
+	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
+
+	//
+	// Advances the index forward by the given number of bytes.
+	// Should there not be enough memory, or the number of bytes
+	// is not allowed, this method will return 0. Can be called
+	// and used exactly as malloc().
+	//
+	ubyte* GetTempMemory(size_t cBytes)
+	//LPSTR GetTempMemory(size_t cBytes)
+	{
+		ubyte* lpMemory;
+
+		if (m_ichOffsetMemBlock + cBytes > MEMORYSIZE || cBytes <= 0)
+		{
+			return null;
+		}
+		else
+		{
+			lpMemory = cast(ubyte*) m_rgchMemBlock + m_ichOffsetMemBlock;
+			m_ichOffsetMemBlock += cBytes;
+
+			return lpMemory;
+		}
+	}
+
+	//
+	// Frees all the temporary memory by setting the index for
+	// available memory back to the beginning
+	//
+	void FreeAllTempMemory() nothrow @nogc
+	{
+		m_ichOffsetMemBlock = 0;
+	}
+}
 
 //
 // Total number of memory allocation pools to manage

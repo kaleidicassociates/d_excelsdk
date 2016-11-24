@@ -74,12 +74,13 @@ version(Windows):
 
 debug=0;
 
-import core.sys.windows.windows;
 import xlld.xlcall;
 import xlld.xlcallcpp;
+import xlld.memorymanager;
+import std.typecons: Flag, Yes;
+import core.sys.windows.windows;
 import core.stdc.string;
 import core.stdc.stdlib:malloc,free;
-import xlld.memorymanager;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
@@ -167,7 +168,7 @@ static if(false) // debug
         MemoryManager.cpp file automatically.
 
 */
-extern(Windows) ubyte* GetTempMemory(size_t cBytes)
+extern(Windows) ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t cBytes)
 {
 	return MGetTempMemory(cBytes);
 }
