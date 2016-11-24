@@ -25,11 +25,13 @@
 */
 module xlld.memorymanager;
 
+import std.experimental.allocator;
+import core.sys.windows.windows;
+
+
 private __gshared MemoryManager vpmm;
 
 
-
-import core.sys.windows.windows;
 version (Windows) {
 	@nogc nothrow extern(Windows) uint GetCurrentThreadId();
 } else {
@@ -171,17 +173,85 @@ struct MemoryManager
 	}
 }
 
-extern (C++) :
 //
 // Interface for C callers to ask for memory
-ubyte* MGetTempMemory(size_t cByte)
+extern(C++) ubyte* MGetTempMemory(size_t cByte)
 {
-	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
+    return null;
+//	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
 }
 
 //
 // Interface for C callers to allow their memory to be reused
-void MFreeAllTempMemory() nothrow
+extern(C++) void MFreeAllTempMemory() nothrow
 {
-	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+//	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+}
+
+
+
+enum MaxMemorySize=100*1024*1024;
+
+__gshared MemoryPool2 excelCallPool;
+
+static this()
+{
+	excelCallPool.start();
+}
+
+static ~this()
+{
+	excelCallPool.dispose();
+}
+
+struct MemoryPool2 {
+	DWORD m_dwOwner=cast(DWORD)-1;			// ID of ownning thread
+	ubyte[] data;
+	size_t curPos=0;
+	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
+	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
+
+
+	void start()
+	{
+		if (data.length==0)
+			data=theAllocator.makeArray!(ubyte)(MEMORYSIZE);
+		curPos=0;
+	}
+
+	void dispose()
+	{
+		if(data.length>0)
+			theAllocator.dispose(data);
+		data.length=0;
+		curPos=0;
+	}
+
+	ubyte[] allocate(size_t numBytes)
+	{
+            import std.algorithm: min;
+		ubyte[] lpMemory;
+
+		if (numBytes<=0)
+			return null;
+
+		if (curPos + numBytes > data.length)
+		{
+			auto newAllocationSize=min(MaxMemorySize,data.length*2);
+			if (newAllocationSize<=data.length)
+				return null;
+			theAllocator.expandArray(data,newAllocationSize,0);
+		}
+
+		lpMemory = data[curPos..curPos+numBytes];
+		curPos+=numBytes;
+		return lpMemory;
+	}
+
+	// Frees all the temporary memory by setting the index for available memory back to the beginning
+
+	void freeAll()
+	{
+		curPos = 0;
+	}
 }
