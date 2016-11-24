@@ -110,7 +110,7 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
 
     @Register(ArgumentText("my arg txt"), MacroType("macro"))
-    double foo(double);
+    double foo(double) nothrow;
 
     auto expected = doubleToDoubleFunction("foo");
     expected.argumentText = ArgumentText("my arg txt");
@@ -123,7 +123,7 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
 
     @Register(HelpTopic("I need somebody"), ArgumentText("my arg txt"))
-    double foo(double);
+    double foo(double) nothrow;
 
     auto expected = doubleToDoubleFunction("foo");
     expected.argumentText = ArgumentText("my arg txt");
@@ -183,7 +183,7 @@ private alias Identity(alias T) = T;
 
 // whether or not this is a function that has the "right" types
 template isSupportedFunction(alias F, T...) {
-    import std.traits: isSomeFunction, ReturnType, Parameters;
+    import std.traits: isSomeFunction, ReturnType, Parameters, functionAttributes, FunctionAttribute;
     import std.meta: AliasSeq, allSatisfy;
     import std.typecons: Tuple;
 
@@ -192,13 +192,19 @@ template isSupportedFunction(alias F, T...) {
     enum canGetPointerToIt = __traits(compiles, &F);
     enum isOneOfSupported(U) = isSupportedType!(U, T);
 
-    static if(canGetPointerToIt)
+    static if(canGetPointerToIt) {
+
         enum isSupportedFunction =
             isSomeFunction!F &&
             __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
             isOneOfSupported!(ReturnType!F) &&
-            allSatisfy!(isOneOfSupported, Parameters!F);
-    else
+            allSatisfy!(isOneOfSupported, Parameters!F) &&
+            functionAttributes!F & FunctionAttribute.nothrow_;
+
+        static if(!isSupportedFunction && !(functionAttributes!F & FunctionAttribute.nothrow_))
+            pragma(msg, "Warning: Function '", __traits(identifier, F), "' not considered because it throws");
+
+    } else
         enum isSupportedFunction = false;
 }
 
@@ -220,10 +226,10 @@ private template isSupportedType(T, U...) {
 private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, FP12*, LPXLOPER12);
 
 @safe pure unittest {
-    double doubleToDouble(double);
+    double doubleToDouble(double) nothrow;
     static assert(isWorksheetFunction!doubleToDouble);
 
-    LPXLOPER12 operToOper(LPXLOPER12);
+    LPXLOPER12 operToOper(LPXLOPER12) nothrow;
     static assert(isWorksheetFunction!operToOper);
 }
 

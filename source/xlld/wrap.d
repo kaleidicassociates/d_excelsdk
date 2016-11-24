@@ -139,6 +139,7 @@ private enum isWorksheetFunction(alias F) =
 @safe pure unittest {
     import xlld.test_d_funcs;
     static assert(!isWorksheetFunction!shouldNotBeAProblem);
+    static assert(!isWorksheetFunction!FuncThrows);
 }
 
 string wrapWorksheetFunctionsString(string moduleName)() {
@@ -284,6 +285,13 @@ version(unittest) {
     auto arg1 = toXlOper("bar");
     auto arg2 = toXlOper("baz");
     ManyToString(&arg0, &arg1, &arg2).shouldEqualDlang("foobarbaz");
+}
+
+@("Only look at nothrow functions")
+@system unittest {
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toXlOper(2.0);
+    static assert(!__traits(compiles, FuncThrows(&arg)));
 }
 
 private enum invalidXlOperType = 0xdeadbeef;
