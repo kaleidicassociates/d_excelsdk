@@ -93,10 +93,10 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 
 @("getWorksheetFunction for double -> double functions with no extra attributes")
 @safe pure unittest {
-    double foo(double) { return 0; }
+    double foo(double) nothrow @nogc { return 0; }
     getWorksheetFunction!foo.shouldEqual(doubleToDoubleFunction("foo"));
 
-    double bar(double) { return 0; }
+    double bar(double) nothrow @nogc { return 0; }
     getWorksheetFunction!bar.shouldEqual(doubleToDoubleFunction("bar"));
 }
 

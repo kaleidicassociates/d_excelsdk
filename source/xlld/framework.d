@@ -75,7 +75,6 @@ version(Windows):
 debug=0;
 
 import core.sys.windows.windows;
-//import std.c.windows.windows;
 import xlld.xlcall;
 import xlld.xlcallcpp;
 import core.stdc.string;
@@ -88,7 +87,6 @@ enum cchMaxStz=255;
 enum MAXSHORTINT =0x7fff;
 enum CP_ACP = 0;
 enum MAXWORD = 0xFFFF;
-// malloc wchar framewrk memorymanager stdarg
 
 static if(false) // debug
 {
