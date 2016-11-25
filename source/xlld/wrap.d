@@ -124,7 +124,8 @@ XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string)) {
 }
 
 XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
-    return [values].toXlOper;
+    T[1] realValues = [values];
+    return realValues.toXlOper;
 }
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
