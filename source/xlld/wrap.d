@@ -135,6 +135,7 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     return val.val.num;
 }
 
+@("isNan for fromXlOper!double")
 @system unittest {
     import std.math: isNaN;
     XLOPER12 oper;
@@ -142,46 +143,94 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     fromXlOper!double(&oper).isNaN.shouldBeTrue;
 }
 
+auto fromXlOper(T)(ref XLOPER12 val) {
+    return (&val).fromXlOper!T;
+}
 
 // 2D slices
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double))) {
-    return val.fromXlOperMulti!(typeof(T.init[0][0]));
+    return val.fromXlOperMulti!(Dimensions.Two, typeof(T.init[0][0]));
+}
+
+@("fromXlOper!string[][]")
+unittest {
+    auto strings = [["foo", "bar", "baz"], ["toto", "titi", "quux"]];
+    auto oper = strings.toXlOper;
+    scope(exit) FreeXLOper(&oper);
+    oper.fromXlOper!(string[][]).shouldEqual(strings);
+}
+
+@("fromXlOper!double[][]")
+unittest {
+    auto doubles = [[1.0, 2.0], [3.0, 4.0]];
+    auto oper = doubles.toXlOper;
+    scope(exit) FreeXLOper(&oper);
+    oper.fromXlOper!(double[][]).shouldEqual(doubles);
+}
+
+private enum Dimensions {
+    One,
+    Two,
 }
 
 // 1D slices
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[], E) && (is(E == string) || is(E == double))) {
-    import std.array: join;
-    return val.fromXlOperMulti!(typeof(T.init[0])).join;
+    // no more join to be @nogc
+    return val.fromXlOperMulti!(Dimensions.One, typeof(T.init[0]));
 }
 
-private auto fromXlOperMulti(T)(LPXLOPER12 val) {
+@("fromXlOper!string[]")
+unittest {
+    auto strings = ["foo", "bar", "baz", "toto", "titi", "quux"];
+    auto oper = strings.toXlOper;
+    scope(exit) FreeXLOper(&oper);
+    oper.fromXlOper!(string[]).shouldEqual(strings);
+}
+
+@("fromXlOper!double[]")
+unittest {
+    auto doubles = [1.0, 2.0, 3.0, 4.0];
+    auto oper = doubles.toXlOper;
+    scope(exit) FreeXLOper(&oper);
+    oper.fromXlOper!(double[]).shouldEqual(doubles);
+}
+
+
+private auto fromXlOperMulti(Dimensions dim, T)(LPXLOPER12 val) {
     import xlld.xl: coerce, free;
     import std.exception: enforce;
-    import std.conv: text;
+    import std.experimental.allocator: makeArray;
+
+    static const exception = new Exception("XL oper not of multi type");
 
     const realType = val.xltype & ~xlbitDLLFree;
-    enforce(realType == xltypeMulti,
-            text("Cannot convert XL oper of type ", val.xltype));
-
-    T[][] ret;
+    if(realType != xltypeMulti)
+        throw exception;
 
     const rows = val.val.array.rows;
-    const columns = val.val.array.columns;
+    const cols = val.val.array.columns;
 
-    ret.length = rows;
-    foreach(ref col; ret)
-        col.length = columns;
+    static if(dim == Dimensions.Two) {
+        auto ret = allocator.makeArray!(T[])(rows);
+        foreach(ref row; ret)
+            row = allocator.makeArray!T(cols);
+    } else static if(dim == Dimensions.One) {
+        auto ret = allocator.makeArray!T(rows * cols);
+    } else
+        static assert(0);
 
-    auto values = val.val.array.lparray[0 .. (rows * columns)];
+    auto values = val.val.array.lparray[0 .. (rows * cols)];
 
     foreach(const row; 0 .. rows) {
-        foreach(const col; 0 .. columns) {
-            auto cellVal = coerce(&values[row * columns + col]);
+        foreach(const col; 0 .. cols) {
+            auto cellVal = coerce(&values[row * cols + col]);
             scope(exit) free(&cellVal);
-            if(cellVal.xltype == dlangToXlOperType!T.Type)
-                ret[row][col] = (&cellVal).fromXlOper!T;
+
+            auto value = cellVal.xltype == dlangToXlOperType!T.Type ? cellVal.fromXlOper!T : T.init;
+            static if(dim == Dimensions.Two)
+                ret[row][col] = value;
             else
-                ret[row][col] = T.init;
+                ret[row * cols + col] = value;
         }
     }
 
@@ -190,18 +239,21 @@ private auto fromXlOperMulti(T)(LPXLOPER12 val) {
 
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
-    import std.conv: to;
+    import std.experimental.allocator: makeArray;
+    import std.utf;
 
     if(val.xltype == xltypeMissing)
         return null;
 
-    wchar[] ret;
-    ret.length = val.val.str[0];
-    ret[0 .. $] = val.val.str[1 .. ret.length + 1];
-    return ret.to!string;
+    auto ret = allocator.makeArray!char(val.val.str[0]);
+    int i;
+    foreach(ch; val.val.str[1 .. ret.length + 1].byChar)
+        ret[i++] = ch;
+
+    return cast(string)ret;
 }
 
-@system pure unittest {
+@system unittest {
     XLOPER12 oper;
     oper.xltype = xltypeMissing;
     fromXlOper!string(&oper).shouldBeNull;
@@ -415,6 +467,7 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     import std.conv: text;
     import std.traits: Parameters;
     import std.typecons: Tuple;
+    import std.algorithm: copy;
 
     static XLOPER12 ret;
 
@@ -443,9 +496,14 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
 
     // next call the wrapped function with D types
     foreach(i, InputType; Parameters!wrappedFunc) {
-        try
+        try {
             dArgs[i] = fromXlOper!InputType(&realArgs[i]);
-        catch(Exception ex) {
+            // auto oper = fromXlOper!InputType(&realArgs[i]);
+            // static if(is(typeof(dArgs[i] == typeof(oper))))
+            //     dArgs[i] = oper;
+            // else
+            //     copy(oper, dArgs[i]);
+        } catch(Exception ex) {
             ret.xltype = xltypeErr;
             ret.val.err = -1;
             return &ret;
