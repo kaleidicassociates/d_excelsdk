@@ -317,6 +317,9 @@ template dlangToXlOperType(T) {
     }
 }
 
+/**
+ A string to use with `mixin` that wraps a D function
+ */
 string wrapModuleFunctionStr(string moduleName, string funcName)() {
     if(!__ctfe) {
         return "";
@@ -344,6 +347,9 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     ].join("\n");
 }
 
+/**
+ Implemented a wrapper for a regular D function
+ */
 LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     import xlld.xl: free;
     import std.conv: text;

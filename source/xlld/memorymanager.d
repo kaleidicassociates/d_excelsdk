@@ -25,6 +25,7 @@
 */
 module xlld.memorymanager;
 
+import std.typecons: Flag, Yes;
 import core.sys.windows.windows;
 
 
@@ -174,14 +175,14 @@ struct MemoryManager
 
 //
 // Interface for C callers to ask for memory
-extern(C++) ubyte* MGetTempMemory(size_t cByte)
+ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t cByte)
 {
 	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
 }
 
 //
 // Interface for C callers to allow their memory to be reused
-extern(C++) void MFreeAllTempMemory() nothrow
+void FreeAllTempMemory() nothrow
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
