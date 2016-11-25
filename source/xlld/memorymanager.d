@@ -59,7 +59,6 @@ struct MemoryPool
 	// and used exactly as malloc().
 	//
 	ubyte* GetTempMemory(size_t cBytes)
-	//LPSTR GetTempMemory(size_t cBytes)
 	{
 		ubyte* lpMemory;
 
@@ -186,7 +185,6 @@ void FreeAllTempMemory() nothrow
 {
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
-
 
 
 enum MaxMemorySize=100*1024*1024;
