@@ -2,9 +2,31 @@ module xlld.wrap;
 
 import xlld.xlcall;
 import xlld.traits: isSupportedFunction;
+import xlld.memorymanager: allocator;
+import xlld.framework: FreeXLOper;
+private alias wrapAllocator = allocator;
 
 version(unittest) {
     import unit_threaded;
+
+    // automatically converts from oper to compare with a D type
+    void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
+        if(actual.xltype == xltypeErr)
+            fail("XLOPER is of error type", file, line);
+        actual.fromXlOper!U.shouldEqual(expected, file, line);
+    }
+
+    // automatically converts from oper to compare with a D type
+    void shouldEqualDlang(U)(ref XLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
+        shouldEqualDlang(&actual, expected, file, line);
+    }
+
+
+    XLOPER12 toSRef(T)(T val) {
+        auto ret = toXlOper(val);
+        ret.xltype = xltypeSRef;
+        return ret;
+    }
 }
 
 XLOPER12 toXlOper(T)(T val) if(is(T == double)) {
@@ -14,18 +36,47 @@ XLOPER12 toXlOper(T)(T val) if(is(T == double)) {
     return ret;
 }
 
-XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
-    import std.conv: to;
+void toXlOper(T)(T val, ref XLOPER12 oper) if(is(T == double)) {
+    oper.xltype = xltypeNum;
+    oper.val.num = val;
+}
 
-    // the first wchar is the string length
-    auto wval = val.to!wstring;
-    wval = [cast(immutable wchar)val.length] ~ wval;
+
+XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
+    import std.utf: byWchar;
+    import std.stdio;
+
+    // extra 2 spaces for the null terminator and the length
+    auto wval = cast(wchar*)allocator.allocate((val.length + 2) * wchar.sizeof).ptr;
+    wval[0] = cast(wchar)val.length;
+    wval[1 + val.length] = 0;
+
+    int i = 1;
+    foreach(ch; val.byWchar) {
+        wval[i++] = ch;
+    }
 
     auto ret = XLOPER12();
     ret.xltype = xltypeStr;
-    ret.val.str = cast(XCHAR*)wval.ptr;
+    ret.val.str = cast(XCHAR*)wval;
+
     return ret;
 }
+
+@("toXlOper!string ascii")
+@system unittest {
+    import std.conv: to;
+
+    const str = "foo";
+    auto oper = str.toXlOper;
+    scope(exit)FreeXLOper(&oper);
+
+    oper.xltype.shouldEqual(xltypeStr);
+    (cast(int)oper.val.str[0]).shouldEqual(str.length);
+    (cast(int)oper.val.str[str.length + 2]).shouldEqual(0); // null terminator
+    (cast(wchar*)oper.val.str)[1 .. str.length + 1].to!string.shouldEqual("foo");
+}
+
 
 XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string)) {
     import std.algorithm: map, all;
@@ -33,22 +84,43 @@ XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string)) {
     import std.exception: enforce;
     import std.conv: text;
 
-    enforce(values.all!(a => a.length == values[0].length),
-            text("# of columns must all be the same and aren't: ", values.map!(a => a.length)));
+    static const exception = new Exception("# of columns must all be the same and aren't");
+    if(!values.all!(a => a.length == values[0].length))
+       throw exception;
 
     auto ret = XLOPER12();
     ret.xltype = xltypeMulti;
-    ret.val.array.rows = cast(int)values.length;
-    ret.val.array.columns = cast(int)values[0].length;
+    const rows = cast(int)values.length;
+    ret.val.array.rows = rows;
+    const cols = cast(int)values[0].length;
+    ret.val.array.columns = cols;
 
-    XLOPER12[] opers;
-    foreach(row; values)
-        foreach(val; row)
-            opers ~= val.toXlOper;
+    ret.val.array.lparray = cast(XLOPER12*)allocator.allocate(rows * cols * ret.sizeof).ptr;
+    auto opers = ret.val.array.lparray[0 .. rows*cols];
 
-    ret.val.array.lparray = opers.ptr;
+    int i;
+    foreach(ref row; values)
+        foreach(ref val; row) {
+            opers[i++] = val.toXlOper;
+        }
 
     return ret;
+}
+
+
+@("toXlOper string[][]")
+@system unittest {
+    auto oper = [["foo", "bar", "baz"], ["toto", "titi", "quux"]].toXlOper;
+    scope(exit) FreeXLOper(&oper);
+
+    oper.xltype.shouldEqual(xltypeMulti);
+    oper.val.array.rows.shouldEqual(2);
+    oper.val.array.columns.shouldEqual(3);
+    auto opers = oper.val.array.lparray[0 .. oper.val.array.rows * oper.val.array.columns];
+
+    opers[0].shouldEqualDlang("foo");
+    opers[3].shouldEqualDlang("toto");
+    opers[5].shouldEqualDlang("quux");
 }
 
 XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
@@ -86,7 +158,8 @@ private auto fromXlOperMulti(T)(LPXLOPER12 val) {
     import std.exception: enforce;
     import std.conv: text;
 
-    enforce(val.xltype == xltypeMulti,
+    const realType = val.xltype & ~xlbitDLLFree;
+    enforce(realType == xltypeMulti,
             text("Cannot convert XL oper of type ", val.xltype));
 
     T[][] ret;
@@ -167,20 +240,6 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     return ret;
 }
 
-version(unittest) {
-    // automatically converts from oper to compare with a D type
-    void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
-        if(actual.xltype == xltypeErr)
-            fail("XLOPER is of error type", file, line);
-        actual.fromXlOper!U.shouldEqual(expected, file, line);
-    }
-
-    XLOPER12 toSRef(T)(T val) {
-        auto ret = toXlOper(val);
-        ret.xltype = xltypeSRef;
-        return ret;
-    }
-}
 
 @("Wrap double[][] -> double")
 @system unittest {
@@ -396,6 +455,8 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
         ret = toXlOper(wrappedFunc(dArgs.expand));
     catch(Exception ex)
         return null;
+
+    ret.xltype |= xlbitDLLFree;
 
     return &ret;
 }

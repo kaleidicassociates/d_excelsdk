@@ -26,6 +26,10 @@
 module xlld.memorymanager;
 
 import std.typecons: Flag, Yes;
+import std.experimental.allocator.mallocator: Mallocator;
+
+alias Allocator = Mallocator;
+alias allocator = Allocator.instance;
 
 enum StartingMemorySize = 10240;
 enum MaxMemorySize=100*1024*1024;

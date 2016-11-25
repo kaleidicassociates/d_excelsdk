@@ -1261,16 +1261,17 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 
 void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12))
 {
-    import std.experimental.allocator: theAllocator, dispose;
+    import xlld.memorymanager: allocator;
+    import std.experimental.allocator: dispose;
 	switch (pxloper.xltype)
 	{
 		case xltypeStr:
 			if (pxloper.val.str !is null)
-				theAllocator.dispose(pxloper.val.str);
+				allocator.dispose(pxloper.val.str);
 			break;
 		case xltypeRef:
 			if (pxloper.val.mref.lpmref !is null)
-				theAllocator.dispose(pxloper.val.mref.lpmref);
+				allocator.dispose(pxloper.val.mref.lpmref);
 			break;
 		case xltypeMulti:
 			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
@@ -1283,12 +1284,12 @@ void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12))
 					pxloperFree++;
 					cxloper--;
 				}
-				theAllocator.dispose(pxloper.val.array.lparray);
+				allocator.dispose(pxloper.val.array.lparray);
 			}
 			break;
 		case xltypeBigData:
 			if (pxloper.val.bigdata.h.lpbData !is null)
-				theAllocator.dispose(pxloper.val.bigdata.h.lpbData);
+				allocator.dispose(pxloper.val.bigdata.h.lpbData);
 			break;
 		default: // todo: add error handling
 			break;
