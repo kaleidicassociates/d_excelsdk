@@ -109,7 +109,7 @@ struct MemoryManager
 	// thread for a set number of bytes.  Returns 0 if there was a
 	// failure in getting the memory.
 	//
-	ubyte* CPP_GetTempMemory(size_t cByte)
+	ubyte* GetTempMemory(size_t cByte)
 	{
 		auto pmp = GetMemoryPool(GetCurrentThreadId());
                 return pmp ? pmp.GetTempMemory(cByte) : null;
@@ -119,7 +119,7 @@ struct MemoryManager
 	// Method that tells the pool owned by the calling thread that
 	// it is free to reuse all of its memory
 	//
-	void CPP_FreeAllTempMemory() nothrow
+	void FreeAllTempMemory() nothrow
 	{
 		auto pmp = GetMemoryPool(GetCurrentThreadId());
                 return pmp ? pmp.FreeAllTempMemory : null;
@@ -172,18 +172,14 @@ struct MemoryManager
 	}
 }
 
-//
-// Interface for C callers to ask for memory
-ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t cByte)
+ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
 {
-	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
+    return MemoryManager.GetManager.GetTempMemory(numBytes);
 }
 
-//
-// Interface for C callers to allow their memory to be reused
 void FreeAllTempMemory() nothrow
 {
-	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+    MemoryManager.GetManager.FreeAllTempMemory;
 }
 
 enum MaxMemorySize=100*1024*1024;
@@ -199,60 +195,50 @@ __gshared MemoryPool2 excelCallPool;
 
 struct MemoryPool2 {
 
-	DWORD m_dwOwner=cast(DWORD)-1;			// ID of ownning thread
-	ubyte[] data;
-	size_t curPos=0;
-	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
-	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
+    ubyte[] data;
+    size_t curPos=0;
 
     ~this() {
         dispose;
     }
 
-	void start()
-	{
-            import std.experimental.allocator;
+    void start() {
+        import std.experimental.allocator;
+        if (data.length==0)
+            data=theAllocator.makeArray!(ubyte)(MEMORYSIZE);
+        curPos=0;
+    }
 
-		if (data.length==0)
-			data=theAllocator.makeArray!(ubyte)(MEMORYSIZE);
-		curPos=0;
-	}
+    void dispose() {
+        import std.experimental.allocator;
+        if(data.length>0)
+            theAllocator.dispose(data);
+        data.length=0;
+        curPos=0;
+    }
 
-	void dispose()
-	{
-            import std.experimental.allocator;
-		if(data.length>0)
-			theAllocator.dispose(data);
-		data.length=0;
-		curPos=0;
-	}
+    ubyte[] allocate(size_t numBytes) {
+        import std.experimental.allocator;
+        import std.algorithm: min;
 
-	ubyte[] allocate(size_t numBytes)
-	{
-            import std.experimental.allocator;
-            import std.algorithm: min;
-		ubyte[] lpMemory;
+        if (numBytes<=0)
+            return null;
 
-		if (numBytes<=0)
-			return null;
+        if (curPos + numBytes > data.length)
+        {
+            auto newAllocationSize = min(MaxMemorySize, data.length * 2);
+            if (newAllocationSize <= data.length)
+                return null;
+            theAllocator.expandArray(data, newAllocationSize, 0);
+        }
 
-		if (curPos + numBytes > data.length)
-		{
-			auto newAllocationSize=min(MaxMemorySize,data.length*2);
-			if (newAllocationSize<=data.length)
-				return null;
-			theAllocator.expandArray(data,newAllocationSize,0);
-		}
+        auto lpMemory = data[curPos .. curPos+numBytes];
+        curPos += numBytes;
+        return lpMemory;
+    }
 
-		lpMemory = data[curPos..curPos+numBytes];
-		curPos+=numBytes;
-		return lpMemory;
-	}
-
-	// Frees all the temporary memory by setting the index for available memory back to the beginning
-
-	void freeAll()
-	{
-		curPos = 0;
-	}
+    // Frees all the temporary memory by setting the index for available memory back to the beginning
+    void freeAll() nothrow @nogc {
+        curPos = 0;
+    }
 }
