@@ -1242,7 +1242,7 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 
 
 /**
-   FreeXLOperT()
+   FreeXLOper()
 
    Purpose:
         Will free any malloc'd memory associated with the given
@@ -1303,7 +1303,7 @@ void FreeXLOper(LPXLOPER pxloper)
 
 
 /**
-   FreeXLOper12T()
+   FreeXLOper12()
 
    Purpose:
         Will free any malloc'd memory associated with the given
