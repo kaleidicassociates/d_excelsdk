@@ -905,7 +905,7 @@ LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WO
 
 	if (!lpmref)
 	{
-            //FIXME: dispose of lpx
+            FreeAllTempMemory;
 		return null;
 	}
 
@@ -915,7 +915,7 @@ LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WO
 
 	if (wRet != xlretSuccess)
 	{
-            //FIXME: dispose of allocated memory
+            FreeAllTempMemory;
 		return null;
 	}
 	else
@@ -972,7 +972,7 @@ LPXLOPER12 TempActiveRef12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rwFirst,R
 
 	if (lpmref is null)
 	{
-            //FIXME: Dispose of lpx
+            FreeAllTempMemory;
 		return null;
 	}
 
@@ -981,7 +981,7 @@ LPXLOPER12 TempActiveRef12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rwFirst,R
 
 	if (wRet != xlretSuccess)
 	{
-            // FIXME: dispose of allocated memory
+            FreeAllTempMemory;
 	   return null;
 	}
 	else
@@ -1240,43 +1240,6 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 	return lpx;
 }
 
-/**
-   InitFramework()
-
-   Purpose:
-        Initializes all the framework functions.
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-*/
-
-void InitFramework()
-{
-	FreeAllTempMemory();
-}
-
-/**
-   QuitFramework()
-
-   Purpose:
-        Cleans up for all framework functions.
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-*/
-void QuitFramework()
-{
-	FreeAllTempMemory();
-        //FIXME: dispose
-}
 
 /**
    FreeXLOperT()
