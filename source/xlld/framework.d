@@ -1259,16 +1259,10 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 
 */
 
-void FreeXLOper(LPXLOPER pxloper)
+void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12))
 {
     import std.experimental.allocator: theAllocator, dispose;
-	WORD xltype;
-	int cxloper;
-	LPXLOPER pxloperFree;
-
-	xltype = pxloper.xltype;
-
-	switch (xltype)
+	switch (pxloper.xltype)
 	{
 		case xltypeStr:
 			if (pxloper.val.str !is null)
@@ -1279,10 +1273,10 @@ void FreeXLOper(LPXLOPER pxloper)
 				theAllocator.dispose(pxloper.val.mref.lpmref);
 			break;
 		case xltypeMulti:
-			cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
+			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
 			if (pxloper.val.array.lparray !is null)
 			{
-				pxloperFree = pxloper.val.array.lparray;
+				auto pxloperFree = pxloper.val.array.lparray;
 				while (cxloper > 0)
 				{
 					FreeXLOper(pxloperFree);
@@ -1301,68 +1295,17 @@ void FreeXLOper(LPXLOPER pxloper)
 	}
 }
 
-
-/**
-   FreeXLOper12()
-
-   Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER12, assuming it has any memory associated with it
-
-   Parameters:
-
-        LPXLOPER12 pxloper12    Pointer to the XLOPER12 whose
-           	                    associated memory we want to free
-
-   Returns:
-
-   Comments:
-
-*/
-
-void FreeXLOper12(LPXLOPER12 pxloper12)
-{
-        import std.experimental.allocator: theAllocator, dispose;
-	int cxloper12;
-	LPXLOPER12 pxloper12Free;
-
-	auto xltype = pxloper12.xltype;
-
-	switch (xltype)
-	{
-		case xltypeStr:
-			if (pxloper12.val.str !is null)
-				theAllocator.dispose(pxloper12.val.str);
-			break;
-		case xltypeRef:
-			if (pxloper12.val.mref.lpmref !is null)
-				theAllocator.dispose(pxloper12.val.mref.lpmref);
-			break;
-		case xltypeMulti:
-			cxloper12 = pxloper12.val.array.rows * pxloper12.val.array.columns;
-			if (pxloper12.val.array.lparray)
-			{
-				pxloper12Free = pxloper12.val.array.lparray;
-				while (cxloper12 > 0)
-				{
-					FreeXLOper12(pxloper12Free);
-					pxloper12Free++;
-					cxloper12--;
-				}
-				theAllocator.dispose(pxloper12.val.array.lparray);
-			}
-			break;
-		case xltypeBigData:
-			if (pxloper12.val.bigdata.h.lpbData !is null)
-				theAllocator.dispose(pxloper12.val.bigdata.h.lpbData);
-			break;
-
-		default: // todo: add error handling
-		break;
-	}
+@("Free regular XLOPER")
+unittest {
+    XLOPER oper;
+    FreeXLOper(&oper);
 }
 
-
+@("Free XLOPER12")
+unittest {
+    XLOPER12 oper;
+    FreeXLOper(&oper);
+}
 
 /**
    ConvertXLRefToXLRef12()
