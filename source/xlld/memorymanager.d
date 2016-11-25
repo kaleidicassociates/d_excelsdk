@@ -176,15 +176,14 @@ struct MemoryManager
 // Interface for C callers to ask for memory
 extern(C++) ubyte* MGetTempMemory(size_t cByte)
 {
-    return null;
-//	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
+	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
 }
 
 //
 // Interface for C callers to allow their memory to be reused
 extern(C++) void MFreeAllTempMemory() nothrow
 {
-//	MemoryManager.GetManager().CPP_FreeAllTempMemory();
+	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
 
 
