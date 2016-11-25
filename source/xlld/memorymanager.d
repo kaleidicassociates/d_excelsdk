@@ -25,7 +25,6 @@
 */
 module xlld.memorymanager;
 
-import std.experimental.allocator;
 import core.sys.windows.windows;
 
 
@@ -194,26 +193,29 @@ enum MaxMemorySize=100*1024*1024;
 
 __gshared MemoryPool2 excelCallPool;
 
-static this()
-{
-	excelCallPool.start();
-}
+// FIXME: for some reason this causes a linker error
+// shared static this()
+// {
+// 	excelCallPool.start();
+// }
 
-static ~this()
-{
-	excelCallPool.dispose();
-}
 
 struct MemoryPool2 {
+
 	DWORD m_dwOwner=cast(DWORD)-1;			// ID of ownning thread
 	ubyte[] data;
 	size_t curPos=0;
 	ubyte[MEMORYSIZE] m_rgchMemBlock;		// Memory for temporary XLOPERs
 	size_t m_ichOffsetMemBlock=0;	// Offset of next memory block to allocate
 
+    ~this() {
+        dispose;
+    }
 
 	void start()
 	{
+            import std.experimental.allocator;
+
 		if (data.length==0)
 			data=theAllocator.makeArray!(ubyte)(MEMORYSIZE);
 		curPos=0;
@@ -221,6 +223,7 @@ struct MemoryPool2 {
 
 	void dispose()
 	{
+            import std.experimental.allocator;
 		if(data.length>0)
 			theAllocator.dispose(data);
 		data.length=0;
@@ -229,6 +232,7 @@ struct MemoryPool2 {
 
 	ubyte[] allocate(size_t numBytes)
 	{
+            import std.experimental.allocator;
             import std.algorithm: min;
 		ubyte[] lpMemory;
 
