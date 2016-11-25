@@ -82,6 +82,14 @@ extern(Windows) int xlAutoOpen()
 	return 1;
 }
 
+extern(Windows) int xlAutoFree12(LPXLOPER12 arg) {
+    import xlld.memorymanager;
+    assert(arg.xltype & xlbitDLLFree);
+    FreeXLOper12(arg);
+    return 1;
+}
+
+
 extern(Windows) LPXLOPER12 xlAddInManagerInfo12(LPXLOPER12 xAction)
 {
 	static XLOPER12 xInfo, xIntAction;

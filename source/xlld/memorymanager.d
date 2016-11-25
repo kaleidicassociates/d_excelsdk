@@ -186,7 +186,6 @@ void FreeAllTempMemory() nothrow
 	MemoryManager.GetManager().CPP_FreeAllTempMemory();
 }
 
-
 enum MaxMemorySize=100*1024*1024;
 
 __gshared MemoryPool2 excelCallPool;
