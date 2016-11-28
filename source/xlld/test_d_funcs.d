@@ -27,7 +27,7 @@ double[][] FuncTripleEverything(double[][] args) nothrow {
     return ret;
 }
 
-double FuncAllLengths(string[][] args) nothrow {
+double FuncAllLengths(string[][] args) nothrow @nogc {
     import std.algorithm: fold;
 
     double ret = 0;
@@ -64,11 +64,11 @@ string[][] FuncBob(string[][] args) nothrow {
 }
 
 
-double FuncDoubleSlice(double[] arg) nothrow {
+double FuncDoubleSlice(double[] arg) nothrow @nogc {
     return arg.length;
 }
 
-double FuncStringSlice(string[] arg) nothrow {
+double FuncStringSlice(string[] arg) nothrow @nogc {
     return arg.length;
 }
 

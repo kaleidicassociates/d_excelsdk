@@ -1273,7 +1273,7 @@ void FreeXLOper(T, A)(T pxloper, ref A allocator)
 {
     import std.experimental.allocator: dispose;
 
-	switch (pxloper.xltype)
+	switch (pxloper.xltype & ~xlbitDLLFree)
 	{
 		case xltypeStr:
                     if (pxloper.val.str !is null) {

@@ -41,12 +41,14 @@ version(unittest) {
             size_t length;
         }
         private ByteRange[] _allocations;
+        private int _numAllocations;
 
         enum uint alignment = platformAlignment;
 
         void[] allocate(size_t numBytes) {
+            ++_numAllocations;
             auto ret = allocator.allocate(numBytes);
-            writelnUt("Allocated  ptr ", ret.ptr, " of ", ret.length, " bytes length");
+            writelnUt("+ Allocated  ptr ", ret.ptr, " of ", ret.length, " bytes length");
             _allocations ~= ByteRange(ret.ptr, ret.length);
             return ret;
         }
@@ -56,7 +58,7 @@ version(unittest) {
             import std.exception: enforce;
             import std.conv: text;
 
-            writelnUt("Deallocate ptr ", bytes.ptr, " of ", bytes.length, " bytes length");
+            writelnUt("- Deallocate ptr ", bytes.ptr, " of ", bytes.length, " bytes length");
 
             bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
 
@@ -67,42 +69,32 @@ version(unittest) {
             return allocator.deallocate(bytes);
         }
 
+        auto numAllocations() @safe pure nothrow const {
+            return _numAllocations;
+        }
+
         ~this() {
             import std.exception: enforce;
             import std.conv: text;
             enforce(!_allocations.length, text("Memory leak in TestAllocator. Allocations: ", _allocations));
         }
     }
+}
 
-    // this shouldn't be needed IMHO and is a bug in std.experimental.allocator that dispose
-    // doesn't handle 2D arrays correctly
-    void dispose2D(A, T)(auto ref A allocator, T[][] array) if(!is(T == string)) {
-        import std.traits: hasElaborateDestructor;
-        import std.experimental.allocator: dispose;
+// this shouldn't be needed IMHO and is a bug in std.experimental.allocator that dispose
+// doesn't handle 2D arrays correctly
+void dispose(A, T)(auto ref A allocator, T[] array) {
+    static import std.experimental.allocator;
+    import std.traits: isArray, Unqual;
 
-        foreach (ref e; array) {
-            static if (hasElaborateDestructor!(typeof(array[0])))
-                destroy(e);
-            allocator.dispose(e);
+    static if(isArray!T) {
+        foreach(ref e; array) {
+            dispose(allocator, e);
         }
-
-        allocator.dispose(array);
     }
 
-    void dispose2D(A, T)(auto ref A allocator, T[][] array) if(is(T == string)) {
-        import std.traits: hasElaborateDestructor;
-        import std.experimental.allocator: dispose;
-
-        foreach (ref r; array) {
-            foreach(ref c; r) {
-                allocator.dispose(cast(void[])c);
-            }
-            allocator.dispose(cast(void[])r);
-        }
-
-        allocator.dispose(array);
-    }
-
+    alias U = Unqual!T;
+    std.experimental.allocator.dispose(allocator, cast(U[])array);
 }
 
 XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == double)) {
@@ -152,7 +144,6 @@ XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == string)) {
 
     oper.xltype.shouldEqual(xltypeStr);
     (cast(int)oper.val.str[0]).shouldEqual(str.length);
-    (cast(int)oper.val.str[str.length + 2]).shouldEqual(0); // null terminator
     (cast(wchar*)oper.val.str)[1 .. str.length + 1].to!string.shouldEqual("foo");
 }
 
@@ -161,6 +152,7 @@ XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == string)) {
     // should throw unless allocations match deallocations
     TestAllocator allocator;
     auto oper = "foo".toXlOper(allocator);
+    allocator.numAllocations.shouldEqual(1);
     FreeXLOper(&oper, allocator);
 }
 
@@ -220,6 +212,7 @@ XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
 @system unittest {
     TestAllocator allocator;
     auto oper = [["foo", "bar", "baz"], ["toto", "titi", "quux"]].toXlOper(allocator);
+    allocator.numAllocations.shouldEqual(7);
     FreeXLOper(&oper, allocator);
 }
 
@@ -227,6 +220,7 @@ XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
 @system unittest {
     TestAllocator allocator;
     auto oper = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]].toXlOper(allocator);
+    allocator.numAllocations.shouldEqual(1);
     FreeXLOper(&oper, allocator);
 }
 
@@ -245,6 +239,7 @@ XLOPER12 toXlOper(T, A)(T values, ref A allocator) if(is(T == string[]) || is(T 
 @system unittest {
     TestAllocator allocator;
     auto oper = ["foo", "bar", "baz", "toto", "titi", "quux"].toXlOper(allocator);
+    allocator.numAllocations.shouldEqual(7);
     FreeXLOper(&oper, allocator);
 }
 
@@ -309,28 +304,28 @@ unittest {
 unittest {
     TestAllocator allocator;
     auto strings = [["foo", "bar", "baz"], ["toto", "titi", "quux"]];
-    writelnUt("creating oper");
     auto oper = strings.toXlOper(allocator);
-    writelnUt("Creating backAgain");
     auto backAgain = oper.fromXlOper!(string[][])(allocator);
-    writelnUt("Freeing oper");
+
+    allocator.numAllocations.shouldEqual(16);
+
     FreeXLOper(&oper, allocator);
     backAgain.shouldEqual(strings);
-    writelnUt("Calling dispose2D");
-    allocator.dispose2D(backAgain);
+    allocator.dispose(backAgain);
 }
 
 @("fromXlOper!double[][] allocator")
 unittest {
-    import std.experimental.allocator: dispose;
-
     TestAllocator allocator;
     auto doubles = [[1.0, 2.0], [3.0, 4.0]];
     auto oper = doubles.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(double[][])(allocator);
+
+    allocator.numAllocations.shouldEqual(4);
+
     FreeXLOper(&oper, allocator);
     backAgain.shouldEqual(doubles);
-    allocator.dispose2D(backAgain);
+    allocator.dispose(backAgain);
 }
 
 
@@ -372,25 +367,27 @@ unittest {
 
 @("fromXlOper!string[] allocator")
 unittest {
-    import std.experimental.allocator: dispose;
-
     TestAllocator allocator;
     auto strings = ["foo", "bar", "baz", "toto", "titi", "quux"];
     auto oper = strings.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(string[])(allocator);
+
+    allocator.numAllocations.shouldEqual(14);
+
     backAgain.shouldEqual(strings);
     FreeXLOper(&oper, allocator);
-    allocator.dispose2D(cast(void[][])backAgain);
+    allocator.dispose(backAgain);
 }
 
 @("fromXlOper!double[] allocator")
 unittest {
-    import std.experimental.allocator: dispose;
-
     TestAllocator allocator;
     auto doubles = [1.0, 2.0, 3.0, 4.0];
     auto oper = doubles.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(double[])(allocator);
+
+    allocator.numAllocations.shouldEqual(2);
+
     backAgain.shouldEqual(doubles);
     FreeXLOper(&oper, allocator);
     allocator.dispose(backAgain);
@@ -469,11 +466,11 @@ auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == string)) {
 
 @("fromXlOper string allocator")
 @system unittest {
-    import std.experimental.allocator: dispose;
-
     TestAllocator allocator;
     auto oper = "foo".toXlOper(allocator);
     auto str = fromXlOper!string(&oper, allocator);
+    allocator.numAllocations.shouldEqual(2);
+
     FreeXLOper(&oper, allocator);
     str.shouldEqual("foo");
     allocator.dispose(cast(void[])str);
@@ -695,6 +692,10 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
  Implemented a wrapper for a regular D function
  */
 LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
+    return wrapModuleFunctionImplAllocator!wrappedFunc(xlld.memorymanager.allocator, args);
+}
+
+LPXLOPER12 wrapModuleFunctionImplAllocator(alias wrappedFunc, A, T...)(ref A allocator, T args) {
     import xlld.xl: free;
     import std.conv: text;
     import std.traits: Parameters;
@@ -728,7 +729,7 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     // next call the wrapped function with D types
     foreach(i, InputType; Parameters!wrappedFunc) {
         try {
-            dArgs[i] = fromXlOper!InputType(&realArgs[i]);
+            dArgs[i] = fromXlOper!InputType(&realArgs[i], allocator);
         } catch(Exception ex) {
             ret.xltype = xltypeErr;
             ret.val.err = -1;
@@ -737,14 +738,46 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     }
 
     try
-        ret = toXlOper(wrappedFunc(dArgs.expand));
+        ret = toXlOper(wrappedFunc(dArgs.expand), allocator);
     catch(Exception ex)
         return null;
+
+    foreach(ref dArg; dArgs) {
+        allocator.dispose(dArg);
+    }
 
     ret.xltype |= xlbitDLLFree;
 
     return &ret;
 }
+
+@("No memory allocation bugs in wrapModuleFunctionImplAllocator for double return")
+@system unittest {
+    import xlld.test_d_funcs: FuncAddEverything;
+
+    TestAllocator allocator;
+    auto arg = toSRef([1.0, 2.0]);
+    auto oper = wrapModuleFunctionImplAllocator!FuncAddEverything(allocator, &arg);
+    (oper.xltype & xlbitDLLFree).shouldBeTrue;
+    allocator.numAllocations.shouldEqual(2);
+    oper.shouldEqualDlang(3.0);
+    FreeXLOper(oper, allocator); // normally this is done by Excel
+}
+
+@("No memory allocation bugs in wrapModuleFunctionImplAllocator for double[][] return")
+@system unittest {
+    import xlld.test_d_funcs: FuncTripleEverything;
+
+    TestAllocator allocator;
+    auto arg = toSRef([1.0, 2.0, 3.0]);
+    auto oper = wrapModuleFunctionImplAllocator!FuncTripleEverything(allocator, &arg);
+    (oper.xltype & xlbitDLLFree).shouldBeTrue;
+    (oper.xltype & ~xlbitDLLFree).shouldEqual(xltypeMulti);
+    allocator.numAllocations.shouldEqual(3);
+    oper.shouldEqualDlang([[3.0, 6.0, 9.0]]);
+    FreeXLOper(oper, allocator); // normally this is done by Excel
+}
+
 
 
 string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
