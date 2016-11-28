@@ -898,9 +898,9 @@ LPXLOPER12 TempErr12(Flag!"autoFree" autoFree = Yes.autoFree)(int err)
 
    Comments:
 */
-
 LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
 {
+    import xlld.memorymanager: allocator;
 	LPXLOPER lpx;
 	LPXLMREF lpmref;
 	int wRet;
@@ -908,19 +908,18 @@ LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WO
 	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 	lpmref = cast(LPXLMREF) GetTempMemory!autoFree(XLMREF.sizeof);
 
-	if (!lpmref)
-	{
-            FreeAllTempMemory;
-		return null;
-	}
-
+        if(!lpmref) {
+            freePointer(lpx);
+            return null;
+        }
 
 	/* calling Excel() instead of Excel4() would free all temp memory! */
 	wRet = Excel4(xlSheetId, lpx, 0);
 
 	if (wRet != xlretSuccess)
 	{
-            FreeAllTempMemory;
+            freePointer(lmref);
+            freePointer(lpx);
 		return null;
 	}
 	else
@@ -935,6 +934,14 @@ LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WO
 
 		return lpx;
 	}
+}
+
+private void freePointer(Flag!"autoFree" autoFree = Yes.autoFree)(void* ptr) {
+    import xlld.memorymanager: allocator;
+    static if(autoFree)
+        FreeAllTempMemory;
+    else
+        allocator.dispose(ptr);
 }
 
 
@@ -972,12 +979,11 @@ LPXLOPER12 TempActiveRef12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rwFirst,R
 	LPXLMREF12 lpmref;
 	int wRet;
 
-	lpx = cast(LPXLOPER12)  GetTempMemory!autoFree(XLOPER12.sizeof)[0..XLOPER12.sizeof];
-	lpmref = cast(LPXLMREF12) GetTempMemory!autoFree(XLMREF12.sizeof)[0..XLOPER12.sizeof];
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
+	lpmref = cast(LPXLMREF12) GetTempMemory!autoFree(XLMREF12.sizeof);
 
-	if (lpmref is null)
-	{
-            FreeAllTempMemory;
+	if (!lpmref) {
+            freePointer(lpx);
 		return null;
 	}
 
@@ -986,7 +992,8 @@ LPXLOPER12 TempActiveRef12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rwFirst,R
 
 	if (wRet != xlretSuccess)
 	{
-            FreeAllTempMemory;
+            freePointer(lpmref);
+            freePointer(lpx);
 	   return null;
 	}
 	else
