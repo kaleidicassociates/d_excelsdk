@@ -78,8 +78,6 @@ import xlld.xlcall;
 import xlld.xlcallcpp;
 import std.typecons: Flag, Yes;
 import core.sys.windows.windows;
-import core.stdc.string;
-import core.stdc.stdlib:malloc,free;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
@@ -1431,6 +1429,8 @@ BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
 
 BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 {
+    import core.stdc.stdlib: malloc,free;
+
 	BOOL fRet;
 	BOOL fClean;
 	//DWORD xltype;
@@ -1709,6 +1709,8 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 
 BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 {
+    import core.stdc.stdlib: malloc,free;
+
 	BOOL fRet;
 	BOOL fClean;
 	WORD crw;
@@ -1979,6 +1981,8 @@ Purpose:
 
 int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
 {
+    import core.stdc.string: memset, memcpy;
+
     if (count == 0)
         return 0;
 
@@ -2002,6 +2006,8 @@ int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
 
 int wmemcpy_s(wchar* dst, size_t numElements, const wchar* src, size_t count)
 {
+    import core.stdc.string: memset, memcpy;
+
   auto sizeInBytes=numElements*wchar.sizeof;
 count=count*2;
     if (count == 0)
