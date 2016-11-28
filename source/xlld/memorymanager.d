@@ -18,8 +18,8 @@ alias allocator = Allocator.instance;
 enum StartingMemorySize = 10240;
 enum MaxMemorySize=100*1024*1024;
 
-private __gshared MemoryPool excelCallPool;
-private __gshared bool gInit;
+private MemoryPool excelCallPool;
+private bool gInit;
 
 
 ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
