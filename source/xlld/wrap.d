@@ -2,9 +2,9 @@ module xlld.wrap;
 
 import xlld.xlcall;
 import xlld.traits: isSupportedFunction;
-import xlld.memorymanager: allocator;
+static import xlld.memorymanager;
 import xlld.framework: FreeXLOper;
-private alias wrapAllocator = allocator;
+
 
 version(unittest) {
     import unit_threaded;
@@ -42,7 +42,7 @@ void toXlOper(T)(T val, ref XLOPER12 oper) if(is(T == double)) {
 }
 
 
-XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
+XLOPER12 toXlOper(T, A)(T val, ref A allocator = xlld.memorymanager.allocator) if(is(T == string)) {
     import std.utf: byWchar;
     import std.stdio;
 
@@ -78,7 +78,9 @@ XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
 }
 
 
-XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string)) {
+XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator = xlld.memorymanager.allocator)
+    if(is(T == double) || is(T == string))
+{
     import std.algorithm: map, all;
     import std.array: array;
     import std.exception: enforce;
@@ -148,8 +150,10 @@ auto fromXlOper(T)(ref XLOPER12 val) {
 }
 
 // 2D slices
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double))) {
-    return val.fromXlOperMulti!(Dimensions.Two, typeof(T.init[0][0]));
+auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator = xlld.memorymanager.allocator)
+    if(is(T: E[][], E) && (is(E == string) || is(E == double)))
+{
+    return val.fromXlOperMulti!(Dimensions.Two, typeof(T.init[0][0]))(allocator);
 }
 
 @("fromXlOper!string[][]")
@@ -174,9 +178,10 @@ private enum Dimensions {
 }
 
 // 1D slices
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[], E) && (is(E == string) || is(E == double))) {
-    // no more join to be @nogc
-    return val.fromXlOperMulti!(Dimensions.One, typeof(T.init[0]));
+auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator = xlld.memorymanager.allocator)
+    if(is(T: E[], E) && (is(E == string) || is(E == double)))
+{
+    return val.fromXlOperMulti!(Dimensions.One, typeof(T.init[0]))(allocator);
 }
 
 @("fromXlOper!string[]")
@@ -196,7 +201,7 @@ unittest {
 }
 
 
-private auto fromXlOperMulti(Dimensions dim, T)(LPXLOPER12 val) {
+private auto fromXlOperMulti(Dimensions dim, T, A)(LPXLOPER12 val, ref A allocator) {
     import xlld.xl: coerce, free;
     import std.exception: enforce;
     import std.experimental.allocator: makeArray;
@@ -238,7 +243,7 @@ private auto fromXlOperMulti(Dimensions dim, T)(LPXLOPER12 val) {
 }
 
 
-auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
+auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator = xlld.memorymanager.allocator) if(is(T == string)) {
     import std.experimental.allocator: makeArray;
     import std.utf;
 

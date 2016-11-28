@@ -76,7 +76,7 @@ debug=0;
 
 import xlld.xlcall;
 import xlld.xlcallcpp;
-import xlld.memorymanager;
+static import xlld.memorymanager;
 import std.typecons: Flag, Yes;
 import core.sys.windows.windows;
 import core.stdc.string;
@@ -156,6 +156,7 @@ static if(false) // debug
 
 int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 {
+    import xlld.memorymanager: FreeAllTempMemory;
 	int xlret;
 
 	xlret = Excel4v(xlfn,pxResult,cast(int)args.length,cast(LPXLOPER *)args.ptr);
@@ -258,6 +259,8 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 
 int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
 {
+    import xlld.memorymanager: FreeAllTempMemory;
+
 	int xlret;
 
 	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
@@ -597,6 +600,7 @@ wchar* makePascalString(Flag!"autoFree" autoFree = Yes.autoFree)(wstring str)
 
 LPXLOPER12 TempStr12(Flag!"autoFree" autoFree = Yes.autoFree)(wstring lpstr)
 {
+    import xlld.memorymanager: GetTempMemory;
 	LPXLOPER12 lpx;
 	wchar* lps;
 	int len=cast(int)lpstr.length;
@@ -774,6 +778,7 @@ LPXLOPER TempInt(Flag!"autoFree" autoFree = Yes.autoFree)(short i)
 
 LPXLOPER12 TempInt12(Flag!"autoFree" autoFree = Yes.autoFree)(int i)
 {
+    import xlld.memorymanager: GetTempMemory;
 	LPXLOPER12 lpx;
 
 	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
@@ -1259,10 +1264,11 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 
 */
 
-void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12))
+void FreeXLOper(T, A)(T pxloper, ref A allocator = xlld.memorymanager.allocator)
+    if(is(T == LPXLOPER) || is(T == LPXLOPER12))
 {
-    import xlld.memorymanager: allocator;
     import std.experimental.allocator: dispose;
+
 	switch (pxloper.xltype)
 	{
 		case xltypeStr:
