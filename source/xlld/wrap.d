@@ -481,6 +481,9 @@ private enum isWorksheetFunction(alias F) =
 
 @safe pure unittest {
     import xlld.test_d_funcs;
+    // the line below checks that the code still compiles even with a private function
+    // it might stop compiling in a future version when the deprecation rules for
+    // visibility kick in
     static assert(!isWorksheetFunction!shouldNotBeAProblem);
     static assert(!isWorksheetFunction!FuncThrows);
 }
