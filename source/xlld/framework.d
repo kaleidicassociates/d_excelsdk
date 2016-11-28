@@ -70,11 +70,90 @@
 */
 module xlld.framework;
 
+/**
+   FreeXLOper()
+
+   Purpose:
+        Will free any malloc'd memory associated with the given
+        LPXLOPER, assuming it has any memory associated with it
+
+   Parameters:
+
+        LPXLOPER pxloper    Pointer to the XLOPER whose associated
+                            memory we want to free
+
+   Returns:
+
+   Comments:
+
+*/
+
+import xlld.xlcall;
+
+
+void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12)) {
+    import xlld.memorymanager: allocator;
+    FreeXLOper(pxloper, allocator);
+}
+
+void FreeXLOper(T, A)(T pxloper, ref A allocator)
+    if(is(T == LPXLOPER) || is(T == LPXLOPER12))
+{
+    import std.experimental.allocator: dispose;
+
+	switch (pxloper.xltype & ~xlbitDLLFree)
+	{
+		case xltypeStr:
+                    if (pxloper.val.str !is null) {
+                        void* bytesPtr = pxloper.val.str;
+                        allocator.dispose(bytesPtr[0 .. (pxloper.val.str[0] + 1) * wchar.sizeof]);
+                    }
+			break;
+		case xltypeRef:
+			if (pxloper.val.mref.lpmref !is null)
+				allocator.dispose(pxloper.val.mref.lpmref);
+			break;
+		case xltypeMulti:
+			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
+                        const numOpers = cxloper;
+			if (pxloper.val.array.lparray !is null)
+			{
+				auto pxloperFree = pxloper.val.array.lparray;
+				while (cxloper > 0)
+				{
+                                    FreeXLOper(pxloperFree, allocator);
+					pxloperFree++;
+					cxloper--;
+				}
+				allocator.dispose(pxloper.val.array.lparray[0 .. numOpers]);
+			}
+			break;
+		case xltypeBigData:
+			if (pxloper.val.bigdata.h.lpbData !is null)
+				allocator.dispose(pxloper.val.bigdata.h.lpbData);
+			break;
+		default: // todo: add error handling
+			break;
+	}
+}
+
+@("Free regular XLOPER")
+unittest {
+    XLOPER oper;
+    FreeXLOper(&oper);
+}
+
+@("Free XLOPER12")
+unittest {
+    XLOPER12 oper;
+    FreeXLOper(&oper);
+}
+
+
 version(Windows):
 
 debug=0;
 
-import xlld.xlcall;
 import xlld.xlcallcpp;
 import std.typecons: Flag, Yes;
 import core.sys.windows.windows;
@@ -1250,81 +1329,6 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 }
 
 
-/**
-   FreeXLOper()
-
-   Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER, assuming it has any memory associated with it
-
-   Parameters:
-
-        LPXLOPER pxloper    Pointer to the XLOPER whose associated
-                            memory we want to free
-
-   Returns:
-
-   Comments:
-
-*/
-
-void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12)) {
-    import xlld.memorymanager: allocator;
-    FreeXLOper(pxloper, allocator);
-}
-
-void FreeXLOper(T, A)(T pxloper, ref A allocator)
-    if(is(T == LPXLOPER) || is(T == LPXLOPER12))
-{
-    import std.experimental.allocator: dispose;
-
-	switch (pxloper.xltype & ~xlbitDLLFree)
-	{
-		case xltypeStr:
-                    if (pxloper.val.str !is null) {
-                        void* bytesPtr = pxloper.val.str;
-                        allocator.dispose(bytesPtr[0 .. (pxloper.val.str[0] + 1) * wchar.sizeof]);
-                    }
-			break;
-		case xltypeRef:
-			if (pxloper.val.mref.lpmref !is null)
-				allocator.dispose(pxloper.val.mref.lpmref);
-			break;
-		case xltypeMulti:
-			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
-                        const numOpers = cxloper;
-			if (pxloper.val.array.lparray !is null)
-			{
-				auto pxloperFree = pxloper.val.array.lparray;
-				while (cxloper > 0)
-				{
-                                    FreeXLOper(pxloperFree, allocator);
-					pxloperFree++;
-					cxloper--;
-				}
-				allocator.dispose(pxloper.val.array.lparray[0 .. numOpers]);
-			}
-			break;
-		case xltypeBigData:
-			if (pxloper.val.bigdata.h.lpbData !is null)
-				allocator.dispose(pxloper.val.bigdata.h.lpbData);
-			break;
-		default: // todo: add error handling
-			break;
-	}
-}
-
-@("Free regular XLOPER")
-unittest {
-    XLOPER oper;
-    FreeXLOper(&oper);
-}
-
-@("Free XLOPER12")
-unittest {
-    XLOPER12 oper;
-    FreeXLOper(&oper);
-}
 
 /**
    ConvertXLRefToXLRef12()
