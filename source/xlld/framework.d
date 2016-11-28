@@ -1264,7 +1264,11 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 
 */
 
-void FreeXLOper(T, A)(T pxloper, ref A allocator = xlld.memorymanager.allocator)
+void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12)) {
+    FreeXLOper(pxloper, xlld.memorymanager.allocator);
+}
+
+void FreeXLOper(T, A)(T pxloper, ref A allocator)
     if(is(T == LPXLOPER) || is(T == LPXLOPER12))
 {
     import std.experimental.allocator: dispose;
@@ -1272,8 +1276,10 @@ void FreeXLOper(T, A)(T pxloper, ref A allocator = xlld.memorymanager.allocator)
 	switch (pxloper.xltype)
 	{
 		case xltypeStr:
-			if (pxloper.val.str !is null)
-				allocator.dispose(pxloper.val.str);
+                    if (pxloper.val.str !is null) {
+                        void* bytesPtr = pxloper.val.str;
+                        allocator.dispose(bytesPtr[0 .. (pxloper.val.str[0] + 1) * wchar.sizeof]);
+                    }
 			break;
 		case xltypeRef:
 			if (pxloper.val.mref.lpmref !is null)
