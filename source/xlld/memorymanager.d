@@ -53,9 +53,10 @@ struct MemoryPool {
 
 
     this(size_t startingMemorySize) {
-        import std.experimental.allocator;
+        import std.experimental.allocator: makeArray;
+
         if (data.length==0)
-            data=theAllocator.makeArray!(ubyte)(startingMemorySize);
+            data=allocator.makeArray!(ubyte)(startingMemorySize);
         curPos=0;
     }
 
@@ -64,16 +65,17 @@ struct MemoryPool {
     }
 
     void dispose() {
-        import std.experimental.allocator;
+        import std.experimental.allocator: dispose;
+
         if(data.length>0)
-            theAllocator.dispose(data);
+            allocator.dispose(data);
         data.length=0;
         curPos=0;
     }
 
     ubyte[] allocate(size_t numBytes) {
-        import std.experimental.allocator;
         import std.algorithm: min;
+        import std.experimental.allocator: expandArray;
 
         if (numBytes<=0)
             return null;
@@ -83,7 +85,7 @@ struct MemoryPool {
             auto newAllocationSize = min(MaxMemorySize, data.length * 2);
             if (newAllocationSize <= data.length)
                 return null;
-            theAllocator.expandArray(data, newAllocationSize, 0);
+            allocator.expandArray(data, newAllocationSize, 0);
         }
 
         auto lpMemory = data[curPos .. curPos+numBytes];
