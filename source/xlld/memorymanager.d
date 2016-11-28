@@ -40,7 +40,7 @@ ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
     }
 }
 
-void FreeAllTempMemory() nothrow
+void FreeAllTempMemory() nothrow @nogc
 {
     excelCallPool.freeAll;
 }
@@ -52,7 +52,7 @@ struct MemoryPool {
     size_t curPos=0;
 
 
-    this(size_t startingMemorySize) {
+    this(size_t startingMemorySize) nothrow @nogc {
         import std.experimental.allocator: makeArray;
 
         if (data.length==0)
@@ -60,11 +60,11 @@ struct MemoryPool {
         curPos=0;
     }
 
-    ~this() {
+    ~this() nothrow {
         dispose;
     }
 
-    void dispose() {
+    void dispose() nothrow {
         import std.experimental.allocator: dispose;
 
         if(data.length>0)
@@ -73,7 +73,7 @@ struct MemoryPool {
         curPos=0;
     }
 
-    ubyte[] allocate(size_t numBytes) {
+    ubyte[] allocate(size_t numBytes) nothrow @nogc {
         import std.algorithm: min;
         import std.experimental.allocator: expandArray;
 
