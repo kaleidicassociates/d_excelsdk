@@ -19,6 +19,7 @@ enum StartingMemorySize = 10240;
 enum MaxMemorySize=100*1024*1024;
 
 private __gshared MemoryPool excelCallPool;
+private __gshared bool gInit;
 
 
 ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
@@ -28,10 +29,9 @@ ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
         // normally this would be done in a module constructor, but for
         // dmd-bug reasons the module constructor doesn't build
         // with either linker or compiler errors
-        static bool init;
-        if(!init) {
+        if(!gInit) {
             excelCallPool = MemoryPool(StartingMemorySize);
-            init = true;
+            gInit = true;
         }
         return excelCallPool.allocate(numBytes).ptr;
     } else {
