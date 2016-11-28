@@ -76,7 +76,6 @@ debug=0;
 
 import xlld.xlcall;
 import xlld.xlcallcpp;
-static import xlld.memorymanager;
 import std.typecons: Flag, Yes;
 import core.sys.windows.windows;
 import core.stdc.string;
@@ -1272,7 +1271,8 @@ LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 */
 
 void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12)) {
-    FreeXLOper(pxloper, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    FreeXLOper(pxloper, allocator);
 }
 
 void FreeXLOper(T, A)(T pxloper, ref A allocator)

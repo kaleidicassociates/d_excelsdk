@@ -19,24 +19,17 @@ enum StartingMemorySize = 10240;
 enum MaxMemorySize=100*1024*1024;
 
 private MemoryPool excelCallPool;
-private bool gInit;
 
+static this() {
+    excelCallPool = MemoryPool(StartingMemorySize);
+}
 
 ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
 {
     static if(autoFree) {
-        // FIXME
-        // normally this would be done in a module constructor, but for
-        // dmd-bug reasons the module constructor doesn't build
-        // with either linker or compiler errors
-        if(!gInit) {
-            excelCallPool = MemoryPool(StartingMemorySize);
-            gInit = true;
-        }
         return excelCallPool.allocate(numBytes).ptr;
     } else {
-        import std.experimental.allocator;
-        return theAllocator.allocate(numBytes).ptr;
+        return allocator.allocate(numBytes).ptr;
     }
 }
 

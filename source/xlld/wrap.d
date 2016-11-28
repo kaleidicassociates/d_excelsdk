@@ -2,7 +2,6 @@ module xlld.wrap;
 
 import xlld.xlcall;
 import xlld.traits: isSupportedFunction;
-static import xlld.memorymanager;
 import xlld.framework: FreeXLOper;
 import xlld.worksheet;
 
@@ -111,7 +110,8 @@ XLOPER12 toXlOper(T)(T val) if(is(T == double)) {
 
 
 XLOPER12 toXlOper(T)(T val) if(is(T == string)) {
-    return toXlOper(val, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return toXlOper(val, allocator);
 }
 
 XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == string)) {
@@ -159,7 +159,8 @@ XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == string)) {
 
 XLOPER12 toXlOper(T)(T[][] values) if(is(T == double) || is(T == string))
 {
-    return toXlOper(values, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return toXlOper(values, allocator);
 }
 
 XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
@@ -227,7 +228,8 @@ XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
 
 
 XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
-    return toXlOper(values, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return toXlOper(values, allocator);
 }
 
 XLOPER12 toXlOper(T, A)(T values, ref A allocator) if(is(T == string[]) || is(T == double[])) {
@@ -275,7 +277,8 @@ auto fromXlOper(T, A)(ref XLOPER12 val, ref A allocator) {
 // 2D slices
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double)))
 {
-    return fromXlOper!T(val, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return fromXlOper!T(val, allocator);
 }
 
 
@@ -339,7 +342,8 @@ private enum Dimensions {
 auto fromXlOper(T)(LPXLOPER12 val)
     if(is(T: E[], E) && (is(E == string) || is(E == double)))
 {
-    return fromXlOper!T(val, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return fromXlOper!T(val, allocator);
 }
 
 // 1D slices
@@ -439,7 +443,8 @@ private auto fromXlOperMulti(Dimensions dim, T, A)(LPXLOPER12 val, ref A allocat
 
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == string)) {
-    return fromXlOper!T(val, xlld.memorymanager.allocator);
+    import xlld.memorymanager: allocator;
+    return fromXlOper!T(val, allocator);
 }
 
 auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == string)) {
@@ -715,7 +720,8 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
  Implemented a wrapper for a regular D function
  */
 LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
-    return wrapModuleFunctionImplAllocator!wrappedFunc(xlld.memorymanager.allocator, args);
+    import xlld.memorymanager: allocator;
+    return wrapModuleFunctionImplAllocator!wrappedFunc(allocator, args);
 }
 
 LPXLOPER12 wrapModuleFunctionImplAllocator(alias wrappedFunc, A, T...)(ref A allocator, T args) {
