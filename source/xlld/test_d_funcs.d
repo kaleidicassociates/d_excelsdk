@@ -5,7 +5,7 @@
  */
 module xlld.test_d_funcs;
 
-double FuncAddEverything(double[][] args) nothrow {
+double FuncAddEverything(double[][] args) nothrow @nogc {
     import std.algorithm: fold;
     import std.math: isNaN;
 

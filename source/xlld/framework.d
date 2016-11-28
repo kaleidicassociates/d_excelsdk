@@ -257,7 +257,7 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
    Comments:
 */
 
-int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow
+int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow @nogc
 {
     import xlld.memorymanager: FreeAllTempMemory;
 

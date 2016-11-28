@@ -32,14 +32,14 @@ version(unittest) {
     }
 } else {
     import xlld.framework;
-    XLOPER12 coerce(LPXLOPER12 oper) nothrow {
+    XLOPER12 coerce(LPXLOPER12 oper) nothrow @nogc {
         XLOPER12 coerced;
         LPXLOPER12[1] arg = [oper];
         Excel12f(xlCoerce, &coerced, arg);
         return coerced;
     }
 
-    void free(LPXLOPER12 oper) nothrow {
+    void free(LPXLOPER12 oper) nothrow @nogc {
         LPXLOPER12[1] arg = [oper];
         Excel12f(xlFree, null, arg);
     }

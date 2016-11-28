@@ -626,6 +626,16 @@ string wrapWorksheetFunctionsString(string moduleName)() {
     static assert(!__traits(compiles, FuncThrows(&arg)));
 }
 
+@("FuncAddEverything wrapper is @nogc")
+@system @nogc unittest {
+    import std.experimental.allocator.mallocator: Mallocator;
+
+    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    auto arg = toXlOper(2.0, Mallocator.instance);
+    scope(exit) FreeXLOper(&arg, Mallocator.instance);
+    FuncAddEverything(&arg);
+}
+
 private enum invalidXlOperType = 0xdeadbeef;
 
 /**
@@ -658,7 +668,7 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     }
 
     import std.array: join;
-    import std.traits: Parameters;
+    import std.traits: Parameters, functionAttributes, FunctionAttribute;
     import std.conv: to;
     import std.algorithm: map;
     import std.range: iota;
@@ -669,9 +679,11 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     const argsDecl = argsLength.iota.map!(a => `LPXLOPER12 arg` ~ a.to!string).join(", ");
     // e.g. arg0, arg1, ...
     const argsCall = argsLength.iota.map!(a => `arg` ~ a.to!string).join(", ");
-
+    const nogc = functionAttributes!(mixin(funcName)) & FunctionAttribute.nogc
+        ? "@nogc"
+        : "";
     return [
-        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) nothrow {`,
+        `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) nothrow ` ~ nogc ~ `{`,
         `    static import ` ~ moduleName ~ `;`,
         `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
         `    return wrapModuleFunctionImpl!wrappedFunc(` ~ argsCall ~  `);`,
@@ -687,7 +699,6 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     import std.conv: text;
     import std.traits: Parameters;
     import std.typecons: Tuple;
-    import std.algorithm: copy;
 
     static XLOPER12 ret;
 
@@ -718,11 +729,6 @@ LPXLOPER12 wrapModuleFunctionImpl(alias wrappedFunc, T...)(T args) {
     foreach(i, InputType; Parameters!wrappedFunc) {
         try {
             dArgs[i] = fromXlOper!InputType(&realArgs[i]);
-            // auto oper = fromXlOper!InputType(&realArgs[i]);
-            // static if(is(typeof(dArgs[i] == typeof(oper))))
-            //     dArgs[i] = oper;
-            // else
-            //     copy(oper, dArgs[i]);
         } catch(Exception ex) {
             ret.xltype = xltypeErr;
             ret.val.err = -1;
@@ -758,7 +764,7 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
 }
 
 
-XLOPER12 convertInput(T)(LPXLOPER12 arg) {
+XLOPER12 convertInput(T)(LPXLOPER12 arg) @nogc {
     import xlld.xl: coerce, free;
 
     static exception = new const Exception("Error converting input");
