@@ -797,7 +797,7 @@ string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
 }
 
 
-XLOPER12 convertInput(T)(LPXLOPER12 arg) @nogc {
+XLOPER12 convertInput(T)(LPXLOPER12 arg) {
     import xlld.xl: coerce, free;
 
     static exception = new const Exception("Error converting input");
