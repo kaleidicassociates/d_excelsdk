@@ -83,7 +83,6 @@ extern(Windows) int xlAutoOpen()
 }
 
 extern(Windows) int xlAutoFree12(LPXLOPER12 arg) {
-    import xlld.memorymanager;
     assert(arg.xltype & xlbitDLLFree);
     FreeXLOper(arg);
     return 1;
