@@ -1287,16 +1287,17 @@ void FreeXLOper(T, A)(T pxloper, ref A allocator)
 			break;
 		case xltypeMulti:
 			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
+                        const numOpers = cxloper;
 			if (pxloper.val.array.lparray !is null)
 			{
 				auto pxloperFree = pxloper.val.array.lparray;
 				while (cxloper > 0)
 				{
-					FreeXLOper(pxloperFree);
+                                    FreeXLOper(pxloperFree, allocator);
 					pxloperFree++;
 					cxloper--;
 				}
-				allocator.dispose(pxloper.val.array.lparray);
+				allocator.dispose(pxloper.val.array.lparray[0 .. numOpers]);
 			}
 			break;
 		case xltypeBigData:

@@ -46,6 +46,7 @@ version(unittest) {
 
         void[] allocate(size_t numBytes) {
             auto ret = allocator.allocate(numBytes);
+            writelnUt("Allocated  ptr ", ret.ptr, " of ", ret.length, " bytes length");
             _allocations ~= ByteRange(ret.ptr, ret.length);
             return ret;
         }
@@ -54,6 +55,8 @@ version(unittest) {
             import std.algorithm: remove, canFind;
             import std.exception: enforce;
             import std.conv: text;
+
+            writelnUt("Deallocate ptr ", bytes.ptr, " of ", bytes.length, " bytes length");
 
             bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
 
@@ -70,6 +73,40 @@ version(unittest) {
             enforce(!_allocations.length, text("Memory leak in TestAllocator. Allocations: ", _allocations));
         }
     }
+
+    // this shouldn't be needed IMHO and is a bug in std.experimental.allocator that dispose
+    // doesn't handle 2D arrays correctly
+    void dispose2D(A, T)(auto ref A allocator, T[][] array) if(!is(T == string)) {
+        import std.traits: hasElaborateDestructor;
+        import std.experimental.allocator: dispose;
+
+        foreach (ref e; array) {
+            static if (hasElaborateDestructor!(typeof(array[0])))
+                destroy(e);
+            allocator.dispose(e);
+        }
+
+        allocator.dispose(array);
+    }
+
+    void dispose2D(A, T)(auto ref A allocator, T[][] array) if(is(T == string)) {
+        import std.traits: hasElaborateDestructor;
+        import std.experimental.allocator: dispose;
+
+        foreach (ref r; array) {
+            foreach(ref c; r) {
+                allocator.dispose(cast(void[])c);
+            }
+            allocator.dispose(cast(void[])r);
+        }
+
+        allocator.dispose(array);
+    }
+
+}
+
+XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == double)) {
+    return toXlOper(val);
 }
 
 XLOPER12 toXlOper(T)(T val) if(is(T == double)) {
@@ -157,7 +194,7 @@ XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
     int i;
     foreach(ref row; values)
         foreach(ref val; row) {
-            opers[i++] = val.toXlOper;
+            opers[i++] = val.toXlOper(allocator);
         }
 
     return ret;
@@ -186,6 +223,14 @@ XLOPER12 toXlOper(T, A)(T[][] values, ref A allocator)
     FreeXLOper(&oper, allocator);
 }
 
+@("toXlOper double[][] allocator")
+@system unittest {
+    TestAllocator allocator;
+    auto oper = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]].toXlOper(allocator);
+    FreeXLOper(&oper, allocator);
+}
+
+
 XLOPER12 toXlOper(T)(T values) if(is(T == string[]) || is(T == double[])) {
     return toXlOper(values, xlld.memorymanager.allocator);
 }
@@ -203,6 +248,9 @@ XLOPER12 toXlOper(T, A)(T values, ref A allocator) if(is(T == string[]) || is(T 
     FreeXLOper(&oper, allocator);
 }
 
+auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == double)) {
+    return fromXlOper!T(val);
+}
 
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     if(val.xltype == xltypeMissing)
@@ -261,20 +309,28 @@ unittest {
 unittest {
     TestAllocator allocator;
     auto strings = [["foo", "bar", "baz"], ["toto", "titi", "quux"]];
+    writelnUt("creating oper");
     auto oper = strings.toXlOper(allocator);
+    writelnUt("Creating backAgain");
     auto backAgain = oper.fromXlOper!(string[][])(allocator);
+    writelnUt("Freeing oper");
     FreeXLOper(&oper, allocator);
     backAgain.shouldEqual(strings);
+    writelnUt("Calling dispose2D");
+    allocator.dispose2D(backAgain);
 }
 
 @("fromXlOper!double[][] allocator")
 unittest {
+    import std.experimental.allocator: dispose;
+
     TestAllocator allocator;
     auto doubles = [[1.0, 2.0], [3.0, 4.0]];
     auto oper = doubles.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(double[][])(allocator);
     FreeXLOper(&oper, allocator);
     backAgain.shouldEqual(doubles);
+    allocator.dispose2D(backAgain);
 }
 
 
@@ -316,22 +372,28 @@ unittest {
 
 @("fromXlOper!string[] allocator")
 unittest {
+    import std.experimental.allocator: dispose;
+
     TestAllocator allocator;
     auto strings = ["foo", "bar", "baz", "toto", "titi", "quux"];
     auto oper = strings.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(string[])(allocator);
     backAgain.shouldEqual(strings);
-    FreeXLOper(&oper);
+    FreeXLOper(&oper, allocator);
+    allocator.dispose2D(cast(void[][])backAgain);
 }
 
 @("fromXlOper!double[] allocator")
 unittest {
+    import std.experimental.allocator: dispose;
+
     TestAllocator allocator;
     auto doubles = [1.0, 2.0, 3.0, 4.0];
     auto oper = doubles.toXlOper(allocator);
     auto backAgain = oper.fromXlOper!(double[])(allocator);
     backAgain.shouldEqual(doubles);
     FreeXLOper(&oper, allocator);
+    allocator.dispose(backAgain);
 }
 
 
@@ -354,6 +416,7 @@ private auto fromXlOperMulti(Dimensions dim, T, A)(LPXLOPER12 val, ref A allocat
         foreach(ref row; ret)
             row = allocator.makeArray!T(cols);
     } else static if(dim == Dimensions.One) {
+
         auto ret = allocator.makeArray!T(rows * cols);
     } else
         static assert(0);
@@ -365,7 +428,7 @@ private auto fromXlOperMulti(Dimensions dim, T, A)(LPXLOPER12 val, ref A allocat
             auto cellVal = coerce(&values[row * cols + col]);
             scope(exit) free(&cellVal);
 
-            auto value = cellVal.xltype == dlangToXlOperType!T.Type ? cellVal.fromXlOper!T : T.init;
+            auto value = cellVal.xltype == dlangToXlOperType!T.Type ? cellVal.fromXlOper!T(allocator) : T.init;
             static if(dim == Dimensions.Two)
                 ret[row][col] = value;
             else
@@ -406,11 +469,14 @@ auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == string)) {
 
 @("fromXlOper string allocator")
 @system unittest {
+    import std.experimental.allocator: dispose;
+
     TestAllocator allocator;
     auto oper = "foo".toXlOper(allocator);
     auto str = fromXlOper!string(&oper, allocator);
-    FreeXLOper(&oper);
+    FreeXLOper(&oper, allocator);
     str.shouldEqual("foo");
+    allocator.dispose(cast(void[])str);
 }
 
 private enum isWorksheetFunction(alias F) =
