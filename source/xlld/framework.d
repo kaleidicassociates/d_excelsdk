@@ -106,7 +106,8 @@ void FreeXLOper(T, A)(T pxloper, ref A allocator)
 		case xltypeStr:
                     if (pxloper.val.str !is null) {
                         void* bytesPtr = pxloper.val.str;
-                        allocator.dispose(bytesPtr[0 .. (pxloper.val.str[0] + 1) * wchar.sizeof]);
+                        const numBytes = (pxloper.val.str[0] + 1) * wchar.sizeof;
+                        allocator.dispose(bytesPtr[0 .. numBytes]);
                     }
 			break;
 		case xltypeRef:
