@@ -5,6 +5,12 @@
  */
 module xlld.test_d_funcs;
 
+import xlld.worksheet;
+
+@Register(ArgumentText("Array to add"),
+          HelpTopic("Adds all cells in an array"),
+          FunctionHelp("Adds all cells in an array"),
+          ArgumentHelp(["The array to add"]))
 double FuncAddEverything(double[][] args) nothrow @nogc {
     import std.algorithm: fold;
     import std.math: isNaN;

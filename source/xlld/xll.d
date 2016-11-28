@@ -77,7 +77,7 @@ extern(Windows) int xlAutoOpen()
 	Excel12f(xlGetName, &dllName, []);
 
 	foreach(functionParams; getWorksheetFunctions.map!(a => a.toStringArray))
-		Excel12f(xlfRegister, cast(LPXLOPER12)0, [cast(LPXLOPER12) &dllName] ~ TempStr12(functionParams[]));
+		Excel12f(xlfRegister, cast(LPXLOPER12)null, [cast(LPXLOPER12) &dllName] ~ TempStr12(functionParams[]));
 
 	return 1;
 }
@@ -117,5 +117,30 @@ extern(Windows) LPXLOPER12 xlAddInManagerInfo12(LPXLOPER12 xAction)
 	//for UDFs declared as thread safe, use alternate memory allocation mechanisms
 	return cast(LPXLOPER12) &xInfo;
 }
+
+version(Windows) {
+    extern(Windows) void OutputDebugStringW(const wchar* fmt) nothrow;
+
+    const(wchar)* toWStringz(in wstring str) nothrow {
+        return (str ~ '\0').ptr;
+    }
+
+    void log(T...)(T args) {
+        import std.conv: text, to;
+        try
+            OutputDebugStringW(text(args).to!wstring.toWStringz);
+        catch(Exception)
+            OutputDebugStringW("[DataServer] outputDebug itself failed"w.toWStringz);
+    }
+} else version(unittest) {
+    void log(T...)(T args) {
+    }
+} else {
+    void log(T...)(T args) {
+        import std.experimental.logger;
+        trace(args);
+    }
+}
+
 
 }

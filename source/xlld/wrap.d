@@ -4,6 +4,7 @@ import xlld.xlcall;
 import xlld.traits: isSupportedFunction;
 static import xlld.memorymanager;
 import xlld.framework: FreeXLOper;
+import xlld.worksheet;
 
 
 version(unittest) {
@@ -668,7 +669,7 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     }
 
     import std.array: join;
-    import std.traits: Parameters, functionAttributes, FunctionAttribute;
+    import std.traits: Parameters, functionAttributes, FunctionAttribute, getUDAs;
     import std.conv: to;
     import std.algorithm: map;
     import std.range: iota;
@@ -682,13 +683,32 @@ string wrapModuleFunctionStr(string moduleName, string funcName)() {
     const nogc = functionAttributes!(mixin(funcName)) & FunctionAttribute.nogc
         ? "@nogc"
         : "";
+
+    alias registerAttrs = getUDAs!(mixin(funcName), Register);
+    static assert(registerAttrs.length == 0 || registerAttrs.length == 1,
+                  "Invalid number of @Register on " ~ funcName);
+
+    string register;
+    static if(registerAttrs.length)
+        register = `@` ~ registerAttrs[0].to!string;
+
     return [
+        register,
         `extern(Windows) LPXLOPER12 ` ~ funcName ~ `(` ~ argsDecl ~ `) nothrow ` ~ nogc ~ `{`,
         `    static import ` ~ moduleName ~ `;`,
         `    alias wrappedFunc = ` ~ moduleName ~ `.` ~ funcName ~ `;`,
         `    return wrapModuleFunctionImpl!wrappedFunc(` ~ argsCall ~  `);`,
         `}`,
     ].join("\n");
+}
+
+@system unittest {
+    import xlld.worksheet;
+    import std.traits: getUDAs;
+
+    mixin(wrapModuleFunctionStr!("xlld.test_d_funcs", "FuncAddEverything"));
+    alias registerAttrs = getUDAs!(FuncAddEverything, Register);
+    static assert(registerAttrs[0].argumentText.value == "Array to add");
 }
 
 /**

@@ -7,6 +7,7 @@ module xlld.test_xl_funcs;
 version(unittest):
 
 import xlld.xlcall;
+import xlld.worksheet;
 
 // extern(C) export means it doesn't have to be explicitly
 // added to the .def file
