@@ -511,7 +511,7 @@ private enum isWorksheetFunction(alias F) =
     static assert(!isWorksheetFunction!FuncThrows);
 }
 
-string wrapWorksheetFunctionsString(string moduleName)() {
+string wrapModuleWorksheetFunctionsString(string moduleName)() {
     if(!__ctfe) {
         return "";
     }
@@ -539,7 +539,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap double[][] -> double")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toSRef(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
     FuncAddEverything(&arg).shouldEqualDlang(60.0);
@@ -550,7 +550,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap double[][] -> double[][]")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toSRef(cast(double[][])[[1, 2, 3, 4], [11, 12, 13, 14]]);
     FuncTripleEverything(&arg).shouldEqualDlang(cast(double[][])[[3, 6, 9, 12], [33, 36, 39, 42]]);
@@ -562,7 +562,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap string[][] -> double")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toSRef([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
     FuncAllLengths(&arg).shouldEqualDlang(29.0);
@@ -573,7 +573,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap string[][] -> double[][]")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toSRef([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
     FuncLengths(&arg).shouldEqualDlang(cast(double[][])[[3, 3, 3, 4], [4, 4, 4, 4]]);
@@ -584,7 +584,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap string[][] -> string[][]")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
 
     auto arg = toSRef([["foo", "bar", "baz", "quux"], ["toto", "titi", "tutu", "tete"]]);
     FuncBob(&arg).shouldEqualDlang([["foobob", "barbob", "bazbob", "quuxbob"],
@@ -593,49 +593,49 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Wrap string[] -> double")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([["foo", "bar"], ["baz", "quux"]]);
     FuncStringSlice(&arg).shouldEqualDlang(4.0);
 }
 
 @("Wrap double[] -> double")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
     FuncDoubleSlice(&arg).shouldEqualDlang(6.0);
 }
 
 @("Wrap double[] -> double[]")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
     FuncSliceTimes3(&arg).shouldEqualDlang([3.0, 6.0, 9.0, 12.0, 15.0, 18.0]);
 }
 
 @("Wrap string[] -> string[]")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef(["quux", "toto"]);
     StringsToStrings(&arg).shouldEqualDlang(["quuxfoo", "totofoo"]);
 }
 
 @("Wrap string[] -> string")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toSRef(["quux", "toto"]);
     StringsToString(&arg).shouldEqualDlang("quux, toto");
 }
 
 @("Wrap string -> string")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toXlOper("foo");
     StringToString(&arg).shouldEqualDlang("foobar");
 }
 
 @("Wrap string, string, string -> string")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg0 = toXlOper("foo");
     auto arg1 = toXlOper("bar");
     auto arg2 = toXlOper("baz");
@@ -644,7 +644,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 
 @("Only look at nothrow functions")
 @system unittest {
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toXlOper(2.0);
     static assert(!__traits(compiles, FuncThrows(&arg)));
 }
@@ -653,7 +653,7 @@ string wrapWorksheetFunctionsString(string moduleName)() {
 @system @nogc unittest {
     import std.experimental.allocator.mallocator: Mallocator;
 
-    mixin(wrapWorksheetFunctionsString!"xlld.test_d_funcs");
+    mixin(wrapModuleWorksheetFunctionsString!"xlld.test_d_funcs");
     auto arg = toXlOper(2.0, Mallocator.instance);
     scope(exit) FreeXLOper(&arg, Mallocator.instance);
     FuncAddEverything(&arg);
@@ -826,6 +826,19 @@ LPXLOPER12 wrapModuleFunctionImplAllocator(alias wrappedFunc, A, T...)(ref A all
     FreeXLOper(oper, allocator); // normally this is done by Excel
 }
 
+string wrapWorksheetFunctionsString(Modules...)() {
+
+    if(!__ctfe) {
+        return "";
+    }
+
+    string ret;
+    foreach(module_; Modules) {
+        ret ~= wrapModuleWorksheetFunctionsString!module_;
+    }
+
+    return ret;
+}
 
 
 string wrapAll(string OriginalModule = __MODULE__, Modules...)() {
