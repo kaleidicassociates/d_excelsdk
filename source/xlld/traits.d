@@ -193,17 +193,19 @@ template isSupportedFunction(alias F, T...) {
     enum isOneOfSupported(U) = isSupportedType!(U, T);
 
     static if(canGetPointerToIt) {
+        static if(isSomeFunction!F) {
 
-        enum isSupportedFunction =
-            isSomeFunction!F &&
-            __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
-            isOneOfSupported!(ReturnType!F) &&
-            allSatisfy!(isOneOfSupported, Parameters!F) &&
-            functionAttributes!F & FunctionAttribute.nothrow_;
+            enum isSupportedFunction =
+                __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
+                isOneOfSupported!(ReturnType!F) &&
+                allSatisfy!(isOneOfSupported, Parameters!F) &&
+                functionAttributes!F & FunctionAttribute.nothrow_;
 
-        static if(!isSupportedFunction && !(functionAttributes!F & FunctionAttribute.nothrow_))
-            pragma(msg, "Warning: Function '", __traits(identifier, F), "' not considered because it throws");
+            static if(!isSupportedFunction && !(functionAttributes!F & FunctionAttribute.nothrow_))
+                pragma(msg, "Warning: Function '", __traits(identifier, F), "' not considered because it throws");
 
+        } else
+            enum isSupportedFunction = false;
     } else
         enum isSupportedFunction = false;
 }
