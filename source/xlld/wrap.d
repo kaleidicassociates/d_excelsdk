@@ -4,7 +4,7 @@ import xlld.xlcall;
 import xlld.traits: isSupportedFunction;
 import xlld.framework: FreeXLOper;
 import xlld.worksheet;
-
+import std.traits: isArray;
 
 version(unittest) {
     import unit_threaded;
@@ -95,6 +95,11 @@ void dispose(A, T)(auto ref A allocator, T[] array) {
 
     alias U = Unqual!T;
     std.experimental.allocator.dispose(allocator, cast(U[])array);
+}
+
+void dispose(A, T)(auto ref A allocator, T value) if(!isArray!T) {
+    static import std.experimental.allocator;
+    std.experimental.allocator.dispose(allocator, value);
 }
 
 XLOPER12 toXlOper(T, A)(T val, ref A allocator) if(is(T == double)) {
