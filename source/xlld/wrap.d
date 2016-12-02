@@ -85,7 +85,7 @@ version(unittest) {
 // doesn't handle 2D arrays correctly
 void dispose(A, T)(auto ref A allocator, T[] array) {
     static import std.experimental.allocator;
-    import std.traits: isArray, Unqual;
+    import std.traits: Unqual;
 
     static if(isArray!T) {
         foreach(ref e; array) {
@@ -251,6 +251,15 @@ XLOPER12 toXlOper(T, A)(T values, ref A allocator) if(is(T == string[]) || is(T 
     FreeXLOper(&oper, allocator);
 }
 
+auto fromXlOper(T)(ref XLOPER12 val) {
+    return (&val).fromXlOper!T;
+}
+
+auto fromXlOper(T, A)(ref XLOPER12 val, ref A allocator) {
+    return (&val).fromXlOper!T(allocator);
+}
+
+
 auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == double)) {
     return fromXlOper!T(val);
 }
@@ -262,6 +271,18 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     return val.val.num;
 }
 
+@("fromXlOper double allocator")
+@system unittest {
+    TestAllocator allocator;
+    auto num = 4.0;
+    auto oper = num.toXlOper(allocator);
+    auto back = oper.fromXlOper!double(allocator);
+    back.shouldEqual(num);
+
+    FreeXLOper(&oper);
+}
+
+
 @("isNan for fromXlOper!double")
 @system unittest {
     import std.math: isNaN;
@@ -269,15 +290,6 @@ auto fromXlOper(T)(LPXLOPER12 val) if(is(T == double)) {
     oper.xltype = xltypeMissing;
     fromXlOper!double(&oper).isNaN.shouldBeTrue;
 }
-
-auto fromXlOper(T)(ref XLOPER12 val) {
-    return (&val).fromXlOper!T;
-}
-
-auto fromXlOper(T, A)(ref XLOPER12 val, ref A allocator) {
-    return (&val).fromXlOper!T(allocator);
-}
-
 
 // 2D slices
 auto fromXlOper(T)(LPXLOPER12 val) if(is(T: E[][], E) && (is(E == string) || is(E == double)))
@@ -777,7 +789,9 @@ LPXLOPER12 wrapModuleFunctionImplAllocator(alias wrappedFunc, A, T...)(ref A all
         return null;
 
     foreach(ref dArg; dArgs) {
-        allocator.dispose(dArg);
+        import std.traits: isPointer;
+        static if(isArray!(typeof(dArg)) || isPointer!(typeof(dArg)))
+            allocator.dispose(dArg);
     }
 
     ret.xltype |= xlbitDLLFree;
