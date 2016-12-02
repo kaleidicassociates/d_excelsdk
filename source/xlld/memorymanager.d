@@ -66,6 +66,10 @@ struct MemoryPool {
         curPos=0;
     }
 
+    void dispose(string) nothrow {
+        dispose;
+    }
+
     ubyte[] allocate(size_t numBytes) nothrow @nogc {
         import std.algorithm: min;
         import std.experimental.allocator: expandArray;
