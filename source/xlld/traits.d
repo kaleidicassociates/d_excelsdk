@@ -93,10 +93,10 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 
 @("getWorksheetFunction for double -> double functions with no extra attributes")
 @safe pure unittest {
-    double foo(double) { return 0; }
+    double foo(double) nothrow @nogc { return 0; }
     getWorksheetFunction!foo.shouldEqual(doubleToDoubleFunction("foo"));
 
-    double bar(double) { return 0; }
+    double bar(double) nothrow @nogc { return 0; }
     getWorksheetFunction!bar.shouldEqual(doubleToDoubleFunction("bar"));
 }
 
@@ -110,7 +110,7 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
 
     @Register(ArgumentText("my arg txt"), MacroType("macro"))
-    double foo(double);
+    double foo(double) nothrow;
 
     auto expected = doubleToDoubleFunction("foo");
     expected.argumentText = ArgumentText("my arg txt");
@@ -123,7 +123,7 @@ WorksheetFunction getWorksheetFunction(alias F)() if(isSomeFunction!F) {
 @safe pure unittest {
 
     @Register(HelpTopic("I need somebody"), ArgumentText("my arg txt"))
-    double foo(double);
+    double foo(double) nothrow;
 
     auto expected = doubleToDoubleFunction("foo");
     expected.argumentText = ArgumentText("my arg txt");
@@ -147,7 +147,7 @@ private wstring getTypeText(alias F)() if(isSomeFunction!F) {
             static assert(false, "Unsupported type " ~ T.stringof);
     }
 
-    wstring retType = typeToString!(ReturnType!F);
+    auto retType = typeToString!(ReturnType!F);
     foreach(argType; Parameters!F)
         retType ~= typeToString!(argType);
 
@@ -183,7 +183,7 @@ private alias Identity(alias T) = T;
 
 // whether or not this is a function that has the "right" types
 template isSupportedFunction(alias F, T...) {
-    import std.traits: isSomeFunction, ReturnType, Parameters;
+    import std.traits: isSomeFunction, ReturnType, Parameters, functionAttributes, FunctionAttribute;
     import std.meta: AliasSeq, allSatisfy;
     import std.typecons: Tuple;
 
@@ -192,13 +192,21 @@ template isSupportedFunction(alias F, T...) {
     enum canGetPointerToIt = __traits(compiles, &F);
     enum isOneOfSupported(U) = isSupportedType!(U, T);
 
-    static if(canGetPointerToIt)
-        enum isSupportedFunction =
-            isSomeFunction!F &&
-            __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
-            isOneOfSupported!(ReturnType!F) &&
-            allSatisfy!(isOneOfSupported, Parameters!F);
-    else
+    static if(canGetPointerToIt) {
+        static if(isSomeFunction!F) {
+
+            enum isSupportedFunction =
+                __traits(compiles, F(Tuple!(Parameters!F)().expand)) &&
+                isOneOfSupported!(ReturnType!F) &&
+                allSatisfy!(isOneOfSupported, Parameters!F) &&
+                functionAttributes!F & FunctionAttribute.nothrow_;
+
+            static if(!isSupportedFunction && !(functionAttributes!F & FunctionAttribute.nothrow_))
+                pragma(msg, "Warning: Function '", __traits(identifier, F), "' not considered because it throws");
+
+        } else
+            enum isSupportedFunction = false;
+    } else
         enum isSupportedFunction = false;
 }
 
@@ -220,10 +228,10 @@ private template isSupportedType(T, U...) {
 private enum isWorksheetFunction(alias F) = isSupportedFunction!(F, double, FP12*, LPXLOPER12);
 
 @safe pure unittest {
-    double doubleToDouble(double);
+    double doubleToDouble(double) nothrow;
     static assert(isWorksheetFunction!doubleToDouble);
 
-    LPXLOPER12 operToOper(LPXLOPER12);
+    LPXLOPER12 operToOper(LPXLOPER12) nothrow;
     static assert(isWorksheetFunction!operToOper);
 }
 
@@ -398,22 +406,29 @@ unittest {
 
 mixin template GenerateDllDef(string module_ = __MODULE__) {
     version(main) {
-        void main(string[] args) {
+        void main(string[] args) nothrow {
+            try {
+                import std.stdio: File;
+                import std.exception: enforce;
+                import std.path: stripExtension;
 
-            import std.stdio: File;
-            import std.exception: enforce;
-            import std.path: stripExtension;
+                enforce(args.length >= 2 && args.length <= 4,
+                        "Usage: " ~ args[0] ~ " [file_name] <lib_name> <description>");
 
-            enforce(args.length >= 2 && args.length <= 4,
-                    "Usage: " ~ args[0] ~ " [file_name] <lib_name> <description>");
+                immutable fileName = args[1];
+                immutable libName = args.length > 2 ? args[2] : fileName.stripExtension ~ ".xll";
+                immutable description = args.length > 3 ? args[3] : "Simple D add-in to Excel";
 
-            immutable fileName = args[1];
-            immutable libName = args.length > 2 ? args[2] : fileName.stripExtension ~ ".xll";
-            immutable description = args.length > 3 ? args[3] : "Simple D add-in to Excel";
-
-            auto file = File(fileName, "w");
-            foreach(stmt; dllDefFile!module_(libName, description).statements)
-                file.writeln(stmt.toString);
+                auto file = File(fileName, "w");
+                foreach(stmt; dllDefFile!module_(libName, description).statements)
+                    file.writeln(stmt.toString);
+            } catch(Exception ex) {
+                import std.stdio: stderr;
+                try
+                    stderr.writeln("Error: ", ex.msg);
+                catch(Exception ex2)
+                    assert(0, "Program could not write exception message");
+            }
         }
     }
 }

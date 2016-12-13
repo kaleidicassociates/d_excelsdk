@@ -70,18 +70,94 @@
 */
 module xlld.framework;
 
+/**
+   FreeXLOper()
+
+   Purpose:
+        Will free any malloc'd memory associated with the given
+        LPXLOPER, assuming it has any memory associated with it
+
+   Parameters:
+
+        LPXLOPER pxloper    Pointer to the XLOPER whose associated
+                            memory we want to free
+
+   Returns:
+
+   Comments:
+
+*/
+
+import xlld.xlcall;
+
+
+void FreeXLOper(T)(T pxloper) if(is(T == LPXLOPER) || is(T == LPXLOPER12)) {
+    import xlld.memorymanager: allocator;
+    FreeXLOper(pxloper, allocator);
+}
+
+void FreeXLOper(T, A)(T pxloper, ref A allocator)
+    if(is(T == LPXLOPER) || is(T == LPXLOPER12))
+{
+    import std.experimental.allocator: dispose;
+
+	switch (pxloper.xltype & ~xlbitDLLFree)
+	{
+		case xltypeStr:
+                    if (pxloper.val.str !is null) {
+                        void* bytesPtr = pxloper.val.str;
+                        const numBytes = (pxloper.val.str[0] + 1) * wchar.sizeof;
+                        allocator.dispose(bytesPtr[0 .. numBytes]);
+                    }
+			break;
+		case xltypeRef:
+			if (pxloper.val.mref.lpmref !is null)
+				allocator.dispose(pxloper.val.mref.lpmref);
+			break;
+		case xltypeMulti:
+			auto cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
+                        const numOpers = cxloper;
+			if (pxloper.val.array.lparray !is null)
+			{
+				auto pxloperFree = pxloper.val.array.lparray;
+				while (cxloper > 0)
+				{
+                                    FreeXLOper(pxloperFree, allocator);
+					pxloperFree++;
+					cxloper--;
+				}
+				allocator.dispose(pxloper.val.array.lparray[0 .. numOpers]);
+			}
+			break;
+		case xltypeBigData:
+			if (pxloper.val.bigdata.h.lpbData !is null)
+				allocator.dispose(pxloper.val.bigdata.h.lpbData);
+			break;
+		default: // todo: add error handling
+			break;
+	}
+}
+
+@("Free regular XLOPER")
+unittest {
+    XLOPER oper;
+    FreeXLOper(&oper);
+}
+
+@("Free XLOPER12")
+unittest {
+    XLOPER12 oper;
+    FreeXLOper(&oper);
+}
+
+
 version(Windows):
 
 debug=0;
 
-import core.sys.windows.windows;
-//import std.c.windows.windows;
-import xlld.xlcall;
 import xlld.xlcallcpp;
-import core.stdc.string;
-import core.stdc.stdlib:malloc,free;
-import xlld.memorymanager;
-import xlld.memorypool;
+import std.typecons: Flag, Yes;
+import core.sys.windows.windows;
 
 enum rwMaxO8=65536;
 enum colMaxO8=256;
@@ -89,7 +165,6 @@ enum cchMaxStz=255;
 enum MAXSHORTINT =0x7fff;
 enum CP_ACP = 0;
 enum MAXWORD = 0xFFFF;
-// malloc wchar framewrk memorymanager stdarg
 
 static if(false) // debug
 {
@@ -121,81 +196,6 @@ static if(false) // debug
 		va_end(argList);
 		OutputDebugStringA(rgch);
 	}
-}
-
-/**
-   GetTempMemory()
-
-   Purpose:
-         Allocates temporary memory. Temporary memory
-         can only be freed in one chunk, by calling
-         FreeAllTempMemory(). This is done by Excel12f().
-
-   Parameters:
-
-        size_t cBytes      How many bytes to allocate
-
-   Returns:
-
-        LPSTR           A pointer to the allocated memory,
-                        or 0 if more memory cannot be
-                        allocated. If this fails,
-                        check that MEMORYSIZE is big enough
-                        in MemoryPool.h and that you have
-                        remembered to call FreeAllTempMemory
-
-   Comments:
-
-  	Algorithm:
-
-        The memory allocation algorithm is extremely
-        simple: on each call, allocate the next cBytes
-        bytes of a static memory buffer. If the buffer
-        becomes too full, simply fail. To free memory,
-        simply reset the pointer (vOffsetMemBlock)
-        back to zero. This memory scheme is very fast
-        and is optimized for the assumption that the
-        only thing you are using temporary memory
-        for is to hold arguments while you call Excel12f().
-        We rely on the fact that you will free all the
-        temporary memory at the same time. We also
-        assume you will not need more memory than
-        the amount required to hold a few arguments
-        to Excel12f().
-
-        Note that the memory allocation algorithm
-        now supports multithreaded applications by
-        giving each unique thread its own static
-        block of memory. This is handled in the
-        MemoryManager.cpp file automatically.
-
-*/
-//extern(Windows) LPSTR GetTempMemory(size_t cBytes)
-extern(Windows) ubyte* GetTempMemory(size_t cBytes)
-{
-	return MGetTempMemory(cBytes);
-}
-
-/**
-   FreeAllTempMemory()
-
-   Purpose:
-
-        Frees all temporary memory that has been allocated
-        for the current thread
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-
-*/
-
-extern(Windows) void FreeAllTempMemory()
-{
-	MFreeAllTempMemory();
 }
 
 /**
@@ -233,6 +233,7 @@ extern(Windows) void FreeAllTempMemory()
 
 int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 {
+    import xlld.memorymanager: FreeAllTempMemory;
 	int xlret;
 
 	xlret = Excel4v(xlfn,pxResult,cast(int)args.length,cast(LPXLOPER *)args.ptr);
@@ -333,8 +334,10 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
    Comments:
 */
 
-int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) // cdecl
+int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow @nogc
 {
+    import xlld.memorymanager: FreeAllTempMemory;
+
 	int xlret;
 
 	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
@@ -421,11 +424,11 @@ int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) // cdecl
    Comments:
 */
 
-LPXLOPER TempNum(double d)
+LPXLOPER TempNum(Flag!"autoFree" autoFree = Yes.autoFree)(double d)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -458,11 +461,11 @@ LPXLOPER TempNum(double d)
 
 */
 
-LPXLOPER12 TempNum12(double d)
+LPXLOPER12 TempNum12(Flag!"autoFree" autoFree = Yes.autoFree)(double d)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
 
 	if (!lpx)
 	{
@@ -526,11 +529,11 @@ LPXLOPER12 TempNum12(double d)
    TempStrConst is encouraged going forward.
 */
 
-LPXLOPER TempStr(LPSTR lpstr)
+LPXLOPER TempStr(Flag!"autoFree" autoFree = Yes.autoFree)(LPSTR lpstr)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -574,7 +577,7 @@ LPXLOPER TempStr(LPSTR lpstr)
 
 */
 
-LPXLOPER TempStrConst(const LPSTR lpstr)
+LPXLOPER TempStrConst(Flag!"autoFree" autoFree = Yes.autoFree)(const LPSTR lpstr)
 {
 	LPXLOPER lpx;
 	LPSTR lps;
@@ -582,7 +585,7 @@ LPXLOPER TempStrConst(const LPSTR lpstr)
 
 	len = strlen(lpstr);
 
-	lpx = cast(LPXLOPER) (GetTempMemory(XLOPER.sizeof) + len+1);
+	lpx = cast(LPXLOPER) (GetTempMemory!autoFree(XLOPER.sizeof + len + 1));
 
 	if (!lpx)
 	{
@@ -648,10 +651,10 @@ LPXLOPER12[] TempStr12(in wstring[] strings)
   return ret;
 }
 
-wchar* makePascalString(wchar* str)
+wchar* makePascalString(Flag!"autoFree" autoFree = Yes.autoFree)(wchar* str)
 {
 	auto len=lstrlenW(str);
-	auto lpx=GetTempMemory((len+1)*2);
+	auto lpx=GetTempMemory!autoFree((len+1)*2);
 	if (lpx is null)
 		return null;
 	auto lps=cast(wchar*)(cast(CHAR*)lpx);
@@ -660,13 +663,26 @@ wchar* makePascalString(wchar* str)
 	return lps;
 }
 
-LPXLOPER12 TempStr12(wstring lpstr)
+wchar* makePascalString(Flag!"autoFree" autoFree = Yes.autoFree)(wstring str)
 {
+	wchar* buf;
+	auto len=lstrlenW(str);
+        wchar* buf = GetTempMemory!autoFree((len + 1) * 2);
+	if (buf is null)
+		return null;
+	buf[0]=cast(wchar)len;
+	buf[1..len]=str[1..len];
+	return buf;
+}
+
+LPXLOPER12 TempStr12(Flag!"autoFree" autoFree = Yes.autoFree)(wstring lpstr)
+{
+    import xlld.memorymanager: GetTempMemory;
 	LPXLOPER12 lpx;
 	wchar* lps;
 	int len=cast(int)lpstr.length;
 
-	lpx = cast(LPXLOPER12) (GetTempMemory(XLOPER12.sizeof + (len+1)*2));
+	lpx = cast(LPXLOPER12) (GetTempMemory!autoFree(XLOPER12.sizeof + (len+1)*2));
 
 	if (lpx is null)
 	{
@@ -684,7 +700,7 @@ LPXLOPER12 TempStr12(wstring lpstr)
 	return lpx;
 }
 
-LPXLOPER12 TempStr12(const(wchar*) lpstr)
+LPXLOPER12 TempStr12(Flag!"autoFree" autoFree = Yes.autoFree)(const(wchar*) lpstr)
 {
 	LPXLOPER12 lpx;
 	wchar* lps;
@@ -692,7 +708,7 @@ LPXLOPER12 TempStr12(const(wchar*) lpstr)
 
 	len = lstrlenW(lpstr);
 
-	lpx = cast(LPXLOPER12) (GetTempMemory(XLOPER12.sizeof) + (len+1)*2);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof + (len+1)*2);
 
 	if (!lpx)
 	{
@@ -729,11 +745,11 @@ LPXLOPER12 TempStr12(const(wchar*) lpstr)
    Comments:
 */
 
-LPXLOPER TempBool(int b)
+LPXLOPER TempBool(Flag!"autoFree" autoFree = Yes.autoFree)(int b)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -764,11 +780,11 @@ LPXLOPER TempBool(int b)
    Comments:
 */
 
-LPXLOPER12 TempBool12(BOOL b)
+LPXLOPER12 TempBool12(Flag!"autoFree" autoFree = Yes.autoFree)(BOOL b)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
 
 	if (!lpx)
 	{
@@ -799,11 +815,11 @@ LPXLOPER12 TempBool12(BOOL b)
    Comments:
 */
 
-LPXLOPER TempInt(short i)
+LPXLOPER TempInt(Flag!"autoFree" autoFree = Yes.autoFree)(short i)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -837,11 +853,12 @@ LPXLOPER TempInt(short i)
         short int up to int in the 12 opers
 */
 
-LPXLOPER12 TempInt12(int i)
+LPXLOPER12 TempInt12(Flag!"autoFree" autoFree = Yes.autoFree)(int i)
 {
+    import xlld.memorymanager: GetTempMemory;
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
 
 	if (!lpx)
 	{
@@ -876,11 +893,11 @@ LPXLOPER12 TempInt12(int i)
    Comments:
 */
 
-LPXLOPER TempErr(WORD err)
+LPXLOPER TempErr(Flag!"autoFree" autoFree = Yes.autoFree)(WORD err)
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -918,11 +935,11 @@ LPXLOPER TempErr(WORD err)
         in the new 12 operators
 */
 
-LPXLOPER12 TempErr12(int err)
+LPXLOPER12 TempErr12(Flag!"autoFree" autoFree = Yes.autoFree)(int err)
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
 
 	if (!lpx)
 	{
@@ -958,27 +975,28 @@ LPXLOPER12 TempErr12(int err)
 
    Comments:
 */
-
-LPXLOPER TempActiveRef(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
+LPXLOPER TempActiveRef(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
 {
+    import xlld.memorymanager: allocator;
 	LPXLOPER lpx;
 	LPXLMREF lpmref;
 	int wRet;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
-	lpmref = cast(LPXLMREF) GetTempMemory(XLMREF.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
+	lpmref = cast(LPXLMREF) GetTempMemory!autoFree(XLMREF.sizeof);
 
-	if (!lpmref)
-	{
-		return null;
-	}
-
+        if(!lpmref) {
+            freePointer(lpx);
+            return null;
+        }
 
 	/* calling Excel() instead of Excel4() would free all temp memory! */
 	wRet = Excel4(xlSheetId, lpx, 0);
 
 	if (wRet != xlretSuccess)
 	{
+            freePointer(lmref);
+            freePointer(lpx);
 		return null;
 	}
 	else
@@ -993,6 +1011,14 @@ LPXLOPER TempActiveRef(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
 
 		return lpx;
 	}
+}
+
+private void freePointer(Flag!"autoFree" autoFree = Yes.autoFree)(void* ptr) {
+    import xlld.memorymanager: allocator;
+    static if(autoFree)
+        FreeAllTempMemory;
+    else
+        allocator.dispose(ptr);
 }
 
 
@@ -1024,17 +1050,17 @@ LPXLOPER TempActiveRef(WORD rwFirst, WORD rwLast, BYTE colFirst, BYTE colLast)
         in Excel 2007 workbook sizes
 */
 
-LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
+LPXLOPER12 TempActiveRef12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
 {
 	LPXLOPER12 lpx;
 	LPXLMREF12 lpmref;
 	int wRet;
 
-	lpx = cast(LPXLOPER12)  GetTempMemory(XLOPER12.sizeof)[0..XLOPER12.sizeof];
-	lpmref = cast(LPXLMREF12) GetTempMemory(XLMREF12.sizeof)[0..XLOPER12.sizeof];
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
+	lpmref = cast(LPXLMREF12) GetTempMemory!autoFree(XLMREF12.sizeof);
 
-	if (lpmref is cast(LPXLMREF12)0)
-	{
+	if (!lpmref) {
+            freePointer(lpx);
 		return null;
 	}
 
@@ -1043,6 +1069,8 @@ LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
 
 	if (wRet != xlretSuccess)
 	{
+            freePointer(lpmref);
+            freePointer(lpx);
 	   return null;
 	}
 	else
@@ -1081,9 +1109,10 @@ LPXLOPER12 TempActiveRef12(RW rwFirst,RW rwLast,COL colFirst,COL colLast)
    Comments:
 */
 
-LPXLOPER TempActiveCell(WORD rw, BYTE col)
+
+LPXLOPER TempActiveCell(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rw, BYTE col)
 {
-	return TempActiveRef(rw, rw, col, col);
+	return TempActiveRef!autoFree(rw, rw, col, col);
 }
 
 /**
@@ -1111,9 +1140,9 @@ LPXLOPER TempActiveCell(WORD rw, BYTE col)
         in sheet sizes introduced in Excel 2007
 */
 
-LPXLOPER12 TempActiveCell12(RW rw, COL col)
+LPXLOPER12 TempActiveCell12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rw, COL col)
 {
-	return TempActiveRef12(rw, rw, col, col);
+	return TempActiveRef12!autoFree(rw, rw, col, col);
 }
 
 /**
@@ -1137,9 +1166,9 @@ LPXLOPER12 TempActiveCell12(RW rw, COL col)
    Comments:
 */
 
-LPXLOPER TempActiveRow(WORD rw)
+LPXLOPER TempActiveRow(Flag!"autoFree" autoFree = Yes.autoFree)(WORD rw)
 {
-	return TempActiveRef(rw, rw, 0, 0xFF);
+	return TempActiveRef!autoFree(rw, rw, 0, 0xFF);
 }
 
 /**
@@ -1166,9 +1195,9 @@ LPXLOPER TempActiveRow(WORD rw)
         sizes introduced in Excel 2007
 */
 
-LPXLOPER12 TempActiveRow12(RW rw)
+LPXLOPER12 TempActiveRow12(Flag!"autoFree" autoFree = Yes.autoFree)(RW rw)
 {
-	return TempActiveRef12(rw, rw, 0, 0x00003FFF);
+	return TempActiveRef12!autoFree(rw, rw, 0, 0x00003FFF);
 }
 
 /**
@@ -1194,9 +1223,9 @@ LPXLOPER12 TempActiveRow12(RW rw)
 
 */
 
-LPXLOPER TempActiveColumn(BYTE col)
+LPXLOPER TempActiveColumn(Flag!"autoFree" autoFree = Yes.autoFree)(BYTE col)
 {
-	return TempActiveRef(0, 0xFFFF, col, col);
+	return TempActiveRef!autoFree(0, 0xFFFF, col, col);
 }
 
 /**
@@ -1224,9 +1253,9 @@ LPXLOPER TempActiveColumn(BYTE col)
 
 */
 
-LPXLOPER12 TempActiveColumn12(COL col)
+LPXLOPER12 TempActiveColumn12(Flag!"autoFree" autoFree = Yes.autoFree)(COL col)
 {
-	return TempActiveRef12(0, 0x000FFFFF, col, col);
+	return TempActiveRef12!autoFree(0, 0x000FFFFF, col, col);
 }
 
 
@@ -1249,11 +1278,11 @@ LPXLOPER12 TempActiveColumn12(COL col)
 
 */
 
-LPXLOPER TempMissing()
+LPXLOPER TempMissing(Flag!"autoFree" autoFree = Yes.autoFree)()
 {
 	LPXLOPER lpx;
 
-	lpx = cast(LPXLOPER) GetTempMemory(XLOPER.sizeof);
+	lpx = cast(LPXLOPER) GetTempMemory!autoFree(XLOPER.sizeof);
 
 	if (!lpx)
 	{
@@ -1284,11 +1313,11 @@ LPXLOPER TempMissing()
 
 */
 
-LPXLOPER12 TempMissing12()
+LPXLOPER12 TempMissing12(Flag!"autoFree" autoFree = Yes.autoFree)()
 {
 	LPXLOPER12 lpx;
 
-	lpx = cast(LPXLOPER12) GetTempMemory(XLOPER12.sizeof);
+	lpx = cast(LPXLOPER12) GetTempMemory!autoFree(XLOPER12.sizeof);
 
 	if (!lpx)
 	{
@@ -1300,164 +1329,6 @@ LPXLOPER12 TempMissing12()
 	return lpx;
 }
 
-/**
-   InitFramework()
-
-   Purpose:
-        Initializes all the framework functions.
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-*/
-
-void InitFramework()
-{
-	FreeAllTempMemory();
-}
-
-/**
-   QuitFramework()
-
-   Purpose:
-        Cleans up for all framework functions.
-
-   Parameters:
-
-   Returns:
-
-   Comments:
-
-*/
-void QuitFramework()
-{
-	FreeAllTempMemory();
-}
-
-/**
-   FreeXLOperT()
-
-   Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER, assuming it has any memory associated with it
-
-   Parameters:
-
-        LPXLOPER pxloper    Pointer to the XLOPER whose associated
-                            memory we want to free
-
-   Returns:
-
-   Comments:
-
-*/
-
-void FreeXLOperT(LPXLOPER pxloper)
-{
-	WORD xltype;
-	int cxloper;
-	LPXLOPER pxloperFree;
-
-	xltype = pxloper.xltype;
-
-	switch (xltype)
-	{
-  	case xltypeStr:
-  		if (pxloper.val.str !is null)
-  			free(pxloper.val.str);
-  		break;
-  	case xltypeRef:
-  		if (pxloper.val.mref.lpmref !is null)
-  			free(pxloper.val.mref.lpmref);
-  		break;
-  	case xltypeMulti:
-  		cxloper = pxloper.val.array.rows * pxloper.val.array.columns;
-  		if (pxloper.val.array.lparray !is null)
-  		{
-  			pxloperFree = pxloper.val.array.lparray;
-  			while (cxloper > 0)
-  			{
-  				FreeXLOperT(pxloperFree);
-  				pxloperFree++;
-  				cxloper--;
-  			}
-  			free(pxloper.val.array.lparray);
-  		}
-  		break;
-  	case xltypeBigData:
-  		if (pxloper.val.bigdata.h.lpbData !is null)
-  			free(pxloper.val.bigdata.h.lpbData);
-  		break;
-
-    default: // todo: add error handling
-      break;
-    }
-}
-
-
-/**
-   FreeXLOper12T()
-
-   Purpose:
-        Will free any malloc'd memory associated with the given
-        LPXLOPER12, assuming it has any memory associated with it
-
-   Parameters:
-
-        LPXLOPER12 pxloper12    Pointer to the XLOPER12 whose
-           	                    associated memory we want to free
-
-   Returns:
-
-   Comments:
-
-*/
-
-
-void FreeXLOper12T(LPXLOPER12 pxloper12)
-{
-	//DWORD xltype;
-	int cxloper12;
-	LPXLOPER12 pxloper12Free;
-
-	auto xltype = pxloper12.xltype;
-
-	switch (xltype)
-	{
-  	case xltypeStr:
-  		if (pxloper12.val.str !is null)
-  			free(pxloper12.val.str);
-  		break;
-  	case xltypeRef:
-  		if (pxloper12.val.mref.lpmref !is null)
-  			free(pxloper12.val.mref.lpmref);
-  		break;
-  	case xltypeMulti:
-  		cxloper12 = pxloper12.val.array.rows * pxloper12.val.array.columns;
-  		if (pxloper12.val.array.lparray)
-  		{
-  			pxloper12Free = pxloper12.val.array.lparray;
-  			while (cxloper12 > 0)
-  			{
-  				FreeXLOper12T(pxloper12Free);
-  				pxloper12Free++;
-  				cxloper12--;
-  			}
-  			free(pxloper12.val.array.lparray);
-  		}
-  		break;
-  	case xltypeBigData:
-  		if (pxloper12.val.bigdata.h.lpbData !is null)
-  			free(pxloper12.val.bigdata.h.lpbData);
-  		break;
-
-    default: // todo: add error handling
-      break;
-  }
-}
 
 
 /**
@@ -1563,6 +1434,8 @@ BOOL ConvertXLRef12ToXLRef(LPXLREF12 pxref12, LPXLREF pxref)
 
 BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 {
+    import core.stdc.stdlib: malloc,free;
+
 	BOOL fRet;
 	BOOL fClean;
 	//DWORD xltype;
@@ -1764,7 +1637,7 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 						fRet = false;
 						while (pxloperConv > rgxloperConv)
 						{
-							FreeXLOperT(pxloperConv);
+							FreeXLOper(pxloperConv);
 							pxloperConv--;
 						}
 						free(rgxloperConv);
@@ -1841,6 +1714,8 @@ BOOL XLOper12ToXLOper(LPXLOPER12 pxloper12, LPXLOPER pxloper)
 
 BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 {
+    import core.stdc.stdlib: malloc,free;
+
 	BOOL fRet;
 	BOOL fClean;
 	WORD crw;
@@ -2025,7 +1900,7 @@ BOOL XLOperToXLOper12(LPXLOPER pxloper, LPXLOPER12 pxloper12)
 						fRet = false;
 						while (pxloper12Conv > rgxloper12Conv)
 						{
-							FreeXLOperT(pxloperConv);
+							FreeXLOper(pxloperConv);
 							pxloperConv--;
 						}
 						free(rgxloper12Conv);
@@ -2111,6 +1986,8 @@ Purpose:
 
 int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
 {
+    import core.stdc.string: memset, memcpy;
+
     if (count == 0)
         return 0;
 
@@ -2134,6 +2011,8 @@ int memcpy_s(ubyte * dst, size_t sizeInBytes, const ubyte * src, size_t count)
 
 int wmemcpy_s(wchar* dst, size_t numElements, const wchar* src, size_t count)
 {
+    import core.stdc.string: memset, memcpy;
+
   auto sizeInBytes=numElements*wchar.sizeof;
 count=count*2;
     if (count == 0)

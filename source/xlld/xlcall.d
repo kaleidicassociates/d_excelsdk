@@ -29,7 +29,7 @@ version(Windows) {
     alias VOID = void;
     alias HWND = int;
     alias POINT = int;
-    alias LPSTR = void*;
+    alias LPSTR = wchar*;
 }
 
 /**

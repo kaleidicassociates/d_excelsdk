@@ -2,22 +2,6 @@
 	MemoryManager.D
 
 	Ported from MemoryManager.cpp by Laeeth Isharc
-
-
-//
-// Purpose:     The memory manager class is an update to the memory manager
-//              in the previous release of the framework.  This class provides
-//              each thread with an array of bytes to use as temporary memory.
-//              The size of the array, and the methods for dealing with the
-//              memory explicitly, is in the class MemoryPool.
-//
-//              MemoryManager handles assigning of threads to pools, and the
-//              creation of new pools when a thread asks for memory the first
-//              time.  Using a singleton class, the manager provides an interface
-//              to C code into the manager.  The number of unique pools starts
-//              as MEMORYPOOLS, defined in MemoryManager.h.  When a new thread
-//              needs a pool, and the current set of pools are all assigned,
-//              the number of pools increases by a factor of two.
 //
 // Platform:    Microsoft Windows
 //
@@ -25,204 +9,89 @@
 */
 module xlld.memorymanager;
 
-__gshared void* vpmm;
+import std.typecons: Flag, Yes;
+import std.experimental.allocator.mallocator: Mallocator;
 
+alias Allocator = Mallocator;
+alias allocator = Allocator.instance;
 
-//
-// Total number of memory allocation pools to manage
-//
+enum StartingMemorySize = 10240;
+enum MaxMemorySize=100*1024*1024;
 
-import core.sys.windows.windows;
-version (Windows) {
-	@nogc nothrow extern(Windows) uint GetCurrentThreadId();
-} else {
-//	import core.sys.posix.posix;
-	uint GetCurrentThreadId() {
-		import core.thread;
-		return cast(uint)Thread.getThis().id;
-	}
+private MemoryPool excelCallPool;
+
+static this() {
+    excelCallPool = MemoryPool(StartingMemorySize);
 }
-import xlld.memorypool;
 
-enum MEMORYPOOLS=4;
-
-struct MemoryManager
+ubyte* GetTempMemory(Flag!"autoFree" autoFree = Yes.autoFree)(size_t numBytes)
 {
-	private int m_impCur=0;		// Current number of pools
-	private int m_impMax=MEMORYPOOLS;		// Max number of mem pools
-	static private MemoryPool[] m_rgmp;	// Storage for the memory pools
-//extern(C++) :
-
-	//
-	// Returns the singleton class, or creates one if it doesn't exit
-	//
-	static MemoryManager* GetManager()
-	{
-		if (!vpmm)
-		{
-			vpmm = new MemoryManager();
-			this.m_rgmp.length=MEMORYPOOLS;
-		}
-		return cast(MemoryManager*)vpmm;
-	}
-
-
-	//
-	// Destructor.  Because of the way memory pools get copied,
-	// this function needs to call an additional function to clear
-	// up the MemoryPool memory - the deconstructor on MemoryPool
-	// does not actually delete its memory
-	//
-	~this()
-	{
-/**
-		foreach(pmp;m_rgmp)
-		{
-			if (pmp.m_rgchMemBlock !is null)
-				pmp.ClearPool();
-		}
-		// delete [] m_rgmp;
-*/	}
-
-	//
-	// Method that will query the correct memory pool of the calling
-	// thread for a set number of bytes.  Returns 0 if there was a
-	// failure in getting the memory.
-	//
-	ubyte* CPP_GetTempMemory(size_t cByte)
-	//LPSTR CPP_GetTempMemory(size_t cByte)
-	{
-		uint dwThreadID;
-		MemoryPool* pmp;
-
-		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
-		pmp = GetMemoryPool(dwThreadID);
-
-		if (!pmp) //no more room for pools
-		{
-			return null;
-		}
-
-		return pmp.GetTempMemory(cByte);
-	}
-
-	//
-	// Method that tells the pool owned by the calling thread that
-	// it is free to reuse all of its memory
-	//
-	void CPP_FreeAllTempMemory()
-	{
-		uint dwThreadID;
-		MemoryPool* pmp;
-
-		dwThreadID = GetCurrentThreadId(); //the id of the calling thread
-		pmp = GetMemoryPool(dwThreadID);
-
-		if (!pmp) //no more room for pools
-		{
-			return;
-		}
-
-		pmp.FreeAllTempMemory();
-	}
-
-	//
-	// Method iterates through the memory pools in an attempt to find
-	// the pool that matches the given thread ID. If a pool is not found,
-	// it creates a new one
-	//
-	private MemoryPool* GetMemoryPool(uint dwThreadID)
-	{
-		int imp; //loop var
-
-		foreach(i,pmp;m_rgmp)
-		{
-			if (pmp.m_dwOwner == dwThreadID)
-			{
-				return &m_rgmp[i];
-			}
-		}
-
-		return CreateNewPool(dwThreadID); //didn't find the owner, make a new one
-	}
-
-	//
-	// Will assign an unused pool to a thread; should all pools be assigned,
-	// it will grow the number of pools available.
-	//
-	private MemoryPool* CreateNewPool(uint dwThreadID)
-	{
-		if (m_impCur >= m_impMax)
-		{
-			GrowPools();
-		}
-		m_rgmp[m_impCur++].m_dwOwner = dwThreadID;
-
-		return &m_rgmp[m_impCur-1];
-	}
-
-	//
-	// Increases the number of available pools by a factor of two. All of
-	// the old pools have their memory pointed to by the new pools. The
-	// memory for the new pools that get replaced is first freed. The reason
-	// ~MemoryPool() can't free its array is in this method - they would be
-	// deleted when the old array of pools is freed at the end of the method,
-	// despite the fact they are now being pointed to by the new pools.
-	//
-	void GrowPools()
-	{
-		MemoryPool* rgmpTemp;
-		MemoryPool* pmpDst;
-		MemoryPool* pmpSrc;
-
-		int i, impMaxNew;
-
-		impMaxNew = 2*m_impMax;
-		m_rgmp.length=2*m_impMax;
-		/**
-		pmpDst = rgmpTemp = new MemoryPool(2*m_impMax);
-		pmpSrc = m_rgmp;
-
-		for (i = 0; i < m_impCur; i++)
-		{
-			//delete [] pmpDst.m_rgchMemBlock;
-			pmpDst.m_rgchMemBlock = pmpSrc.m_rgchMemBlock;
-			pmpDst.m_dwOwner = pmpSrc.m_dwOwner;
-
-			pmpDst++;
-			pmpSrc++;
-		}
-		m_rgmp = rgmpTemp;
-		*/
-		m_impMax = impMaxNew;
-	}
+    static if(autoFree) {
+        return excelCallPool.allocate(numBytes).ptr;
+    } else {
+        return allocator.allocate(numBytes).ptr;
+    }
 }
 
-//
-// Singleton instance of the class
-//
-extern (C++) :
-//
-// Interface for C callers to ask for memory
-//
-// See MemoryPool.h for more details
-//
-//LPSTR MGetTempMemory(size_t cByte)
-ubyte* MGetTempMemory(size_t cByte)
+void FreeAllTempMemory() nothrow @nogc
 {
-	return MemoryManager.GetManager().CPP_GetTempMemory(cByte);
+    excelCallPool.freeAll;
 }
 
-//
-// Interface for C callers to allow their memory to be reused
-//
-// See MemoryPool.h for more details
-//
-void MFreeAllTempMemory()
-{
-	MemoryManager.GetManager().CPP_FreeAllTempMemory();
-}
 
-void* GetTempMemory(size_t size) {
-	return MGetTempMemory(size);
+struct MemoryPool {
+
+    ubyte[] data;
+    size_t curPos=0;
+
+
+    this(size_t startingMemorySize) nothrow @nogc {
+        import std.experimental.allocator: makeArray;
+
+        if (data.length==0)
+            data=allocator.makeArray!(ubyte)(startingMemorySize);
+        curPos=0;
+    }
+
+    ~this() nothrow {
+        dispose;
+    }
+
+    void dispose() nothrow {
+        import std.experimental.allocator: dispose;
+
+        if(data.length>0)
+            allocator.dispose(data);
+        data.length=0;
+        curPos=0;
+    }
+
+    void dispose(string) nothrow {
+        dispose;
+    }
+
+    ubyte[] allocate(size_t numBytes) nothrow @nogc {
+        import std.algorithm: min;
+        import std.experimental.allocator: expandArray;
+
+        if (numBytes<=0)
+            return null;
+
+        if (curPos + numBytes > data.length)
+        {
+            auto newAllocationSize = min(MaxMemorySize, data.length * 2);
+            if (newAllocationSize <= data.length)
+                return null;
+            allocator.expandArray(data, newAllocationSize, 0);
+        }
+
+        auto lpMemory = data[curPos .. curPos+numBytes];
+        curPos += numBytes;
+        return lpMemory;
+    }
+
+    // Frees all the temporary memory by setting the index for available memory back to the beginning
+    void freeAll() nothrow @nogc {
+        curPos = 0;
+    }
 }

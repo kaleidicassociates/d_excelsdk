@@ -5,7 +5,13 @@
  */
 module xlld.test_d_funcs;
 
-double FuncAddEverything(double[][] args) {
+import xlld.worksheet;
+
+@Register(ArgumentText("Array to add"),
+          HelpTopic("Adds all cells in an array"),
+          FunctionHelp("Adds all cells in an array"),
+          ArgumentHelp(["The array to add"]))
+double FuncAddEverything(double[][] args) nothrow @nogc {
     import std.algorithm: fold;
     import std.math: isNaN;
 
@@ -15,7 +21,7 @@ double FuncAddEverything(double[][] args) {
     return ret;
 }
 
-double[][] FuncTripleEverything(double[][] args) {
+double[][] FuncTripleEverything(double[][] args) nothrow {
     double[][] ret;
     ret.length = args.length;
     foreach(i; 0 .. args.length) {
@@ -27,7 +33,7 @@ double[][] FuncTripleEverything(double[][] args) {
     return ret;
 }
 
-double FuncAllLengths(string[][] args) {
+double FuncAllLengths(string[][] args) nothrow @nogc {
     import std.algorithm: fold;
 
     double ret = 0;
@@ -36,7 +42,7 @@ double FuncAllLengths(string[][] args) {
     return ret;
 }
 
-double[][] FuncLengths(string[][] args) {
+double[][] FuncLengths(string[][] args) nothrow {
     double[][] ret;
 
     ret.length = args.length;
@@ -50,7 +56,7 @@ double[][] FuncLengths(string[][] args) {
 }
 
 
-string[][] FuncBob(string[][] args) {
+string[][] FuncBob(string[][] args) nothrow {
     string[][] ret;
 
     ret.length = args.length;
@@ -64,27 +70,27 @@ string[][] FuncBob(string[][] args) {
 }
 
 
-double FuncDoubleSlice(double[] arg) {
+double FuncDoubleSlice(double[] arg) nothrow @nogc {
     return arg.length;
 }
 
-double FuncStringSlice(string[] arg) {
+double FuncStringSlice(string[] arg) nothrow @nogc {
     return arg.length;
 }
 
-double[] FuncSliceTimes3(double[] arg) {
+double[] FuncSliceTimes3(double[] arg) nothrow {
     import std.algorithm;
     import std.array;
     return arg.map!(a => a * 3).array;
 }
 
-string[] StringsToStrings(string[] args) {
+string[] StringsToStrings(string[] args) nothrow {
     import std.algorithm;
     import std.array;
     return args.map!(a => a ~ "foo").array;
 }
 
-string StringsToString(string[] args) {
+string StringsToString(string[] args) nothrow {
     import std.string;
     return args.join(", ");
 }
@@ -99,4 +105,8 @@ private string shouldNotBeAProblem(string, string[]) nothrow {
 
 string ManyToString(string arg0, string arg1, string arg2) nothrow {
     return arg0 ~ arg1 ~ arg2;
+}
+
+double FuncThrows(double) {
+    throw new Exception("oops");
 }
