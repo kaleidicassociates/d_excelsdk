@@ -1,1 +1,0 @@
-dmd -release -m64 -ofkpropdll.dll -L/DLL kpropdll.d dllmain.d kpropdll.def
