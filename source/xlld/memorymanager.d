@@ -44,7 +44,6 @@ struct MemoryPool {
     ubyte[] data;
     size_t curPos=0;
 
-
     this(size_t startingMemorySize) nothrow @nogc {
         import std.experimental.allocator: makeArray;
 
@@ -53,20 +52,20 @@ struct MemoryPool {
         curPos=0;
     }
 
-    ~this() nothrow {
+    ~this() nothrow @nogc {
         dispose;
     }
 
-    void dispose() nothrow {
+    void dispose() nothrow @nogc {
         import std.experimental.allocator: dispose;
 
         if(data.length>0)
             allocator.dispose(data);
-        data.length=0;
+        data = [];
         curPos=0;
     }
 
-    void dispose(string) nothrow {
+    void dispose(string) nothrow @nogc {
         dispose;
     }
 
@@ -87,6 +86,7 @@ struct MemoryPool {
 
         auto lpMemory = data[curPos .. curPos+numBytes];
         curPos += numBytes;
+
         return lpMemory;
     }
 

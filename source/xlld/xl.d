@@ -29,12 +29,14 @@ version(unittest) {
             *result = *oper;
 
             switch(oper.xltype) {
+
             case xltypeSRef:
-                result.xltype = xltypeMulti;
+                result.xltype = gReferencedType;
                 break;
 
             case xltypeNum:
-                result.xltype = xltypeNum;
+            case xltypeStr:
+                result.xltype = oper.xltype;
                 break;
 
             default:
