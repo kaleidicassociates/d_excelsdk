@@ -20,7 +20,7 @@ static if(useDummy) {
         return 0;
     }
 
-    extern(C) int Excel4(int xlfn, LPXLOPER operRes, int count,... ) {
+    extern(System) int Excel4(int xlfn, LPXLOPER operRes, int count,... ) {
         return 0;
     }
 }

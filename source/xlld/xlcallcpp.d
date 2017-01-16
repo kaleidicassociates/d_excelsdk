@@ -65,7 +65,6 @@ void FetchExcel12EntryPt() nothrow @nogc
 //pascal
 extern(Windows) void SetExcel12EntryPt(EXCEL12PROC pexcel12New)
 {
-	FetchExcel12EntryPt();
 	if (pexcel12 is null)
 	{
 		pexcel12 = pexcel12New;
