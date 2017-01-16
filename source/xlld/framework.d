@@ -150,6 +150,110 @@ unittest {
     FreeXLOper(&oper);
 }
 
+/**
+   Excel12f()
+
+   Purpose:
+        A fancy wrapper for the Excel12() function. It also
+        does the following:
+
+        (1) Checks that none of the LPXLOPER12 arguments are 0,
+            which would indicate that creating a temporary XLOPER12
+            has failed. In this case, it doesn't call Excel12
+            but it does print a debug message.
+        (2) If an error occurs while calling Excel12,
+            print a useful debug message.
+        (3) When done, free all temporary memory.
+
+        #1 and #2 require _DEBUG to be defined.
+
+   Parameters:
+
+        int xlfn            Function number (xl...) to call
+        LPXLOPER12 pxResult Pointer to a place to stuff the result,
+                            or 0 if you don't care about the result.
+        int count           Number of arguments
+        ...                 (all LPXLOPER12s) - the arguments.
+
+   Returns:
+
+        A return code (Some of the xlret... values, as defined
+        in XLCALL.H, OR'ed together).
+
+   Comments:
+*/
+
+int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow @nogc
+{
+	import xlld.memorymanager: FreeAllTempMemory;
+	import xlld.xlcallcpp: Excel12v;
+
+	int xlret;
+
+	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
+
+	static if(false) //debug
+	{
+		if (xlret != xlretSuccess)
+		{
+			debugPrintf("Error! Excel12(");
+
+			if (xlfn & xlCommand)
+				debugPrintf("xlCommand | ");
+			if (xlfn & xlSpecial)
+				debugPrintf("xlSpecial | ");
+			if (xlfn & xlIntl)
+				debugPrintf("xlIntl | ");
+			if (xlfn & xlPrompt)
+				debugPrintf("xlPrompt | ");
+
+			debugPrintf("%u) callback failed:",xlfn & 0x0FFF);
+
+			/* More than one error bit may be on */
+
+			if (xlret & xlretAbort)
+			{
+				debugPrintf(" Macro Halted\r");
+			}
+
+			if (xlret & xlretInvXlfn)
+			{
+				debugPrintf(" Invalid Function Number\r");
+			}
+
+			if (xlret & xlretInvCount)
+			{
+				debugPrintf(" Invalid Number of Arguments\r");
+			}
+
+			if (xlret & xlretInvXloper)
+			{
+				debugPrintf(" Invalid XLOPER12\r");
+			}
+
+			if (xlret & xlretStackOvfl)
+			{
+				debugPrintf(" Stack Overflow\r");
+			}
+
+			if (xlret & xlretFailed)
+			{
+				debugPrintf(" Command failed\r");
+			}
+
+			if (xlret & xlretUncalced)
+			{
+				debugPrintf(" Uncalced cell\r");
+			}
+
+		}
+	} // debug
+
+	FreeAllTempMemory();
+
+	return xlret;
+}
+
 
 version(Windows):
 
@@ -301,108 +405,6 @@ int  Excel(int xlfn, LPXLOPER pxResult, LPXLOPER[] args ...) // cdecl
 	return xlret;
 }
 
-/**
-   Excel12f()
-
-   Purpose:
-        A fancy wrapper for the Excel12() function. It also
-        does the following:
-
-        (1) Checks that none of the LPXLOPER12 arguments are 0,
-            which would indicate that creating a temporary XLOPER12
-            has failed. In this case, it doesn't call Excel12
-            but it does print a debug message.
-        (2) If an error occurs while calling Excel12,
-            print a useful debug message.
-        (3) When done, free all temporary memory.
-
-        #1 and #2 require _DEBUG to be defined.
-
-   Parameters:
-
-        int xlfn            Function number (xl...) to call
-        LPXLOPER12 pxResult Pointer to a place to stuff the result,
-                            or 0 if you don't care about the result.
-        int count           Number of arguments
-        ...                 (all LPXLOPER12s) - the arguments.
-
-   Returns:
-
-        A return code (Some of the xlret... values, as defined
-        in XLCALL.H, OR'ed together).
-
-   Comments:
-*/
-
-int Excel12f(int xlfn, LPXLOPER12 pxResult, LPXLOPER12[] args) nothrow @nogc
-{
-    import xlld.memorymanager: FreeAllTempMemory;
-
-	int xlret;
-
-	xlret = Excel12v(xlfn,pxResult,cast(int)args.length, cast(LPXLOPER12 *)args.ptr);
-
-	static if(false) //debug
-	{
-		if (xlret != xlretSuccess)
-		{
-			debugPrintf("Error! Excel12(");
-
-			if (xlfn & xlCommand)
-				debugPrintf("xlCommand | ");
-			if (xlfn & xlSpecial)
-				debugPrintf("xlSpecial | ");
-			if (xlfn & xlIntl)
-				debugPrintf("xlIntl | ");
-			if (xlfn & xlPrompt)
-				debugPrintf("xlPrompt | ");
-
-			debugPrintf("%u) callback failed:",xlfn & 0x0FFF);
-
-			/* More than one error bit may be on */
-
-			if (xlret & xlretAbort)
-			{
-				debugPrintf(" Macro Halted\r");
-			}
-
-			if (xlret & xlretInvXlfn)
-			{
-				debugPrintf(" Invalid Function Number\r");
-			}
-
-			if (xlret & xlretInvCount)
-			{
-				debugPrintf(" Invalid Number of Arguments\r");
-			}
-
-			if (xlret & xlretInvXloper)
-			{
-				debugPrintf(" Invalid XLOPER12\r");
-			}
-
-			if (xlret & xlretStackOvfl)
-			{
-				debugPrintf(" Stack Overflow\r");
-			}
-
-			if (xlret & xlretFailed)
-			{
-				debugPrintf(" Command failed\r");
-			}
-
-			if (xlret & xlretUncalced)
-			{
-				debugPrintf(" Uncalced cell\r");
-			}
-
-		}
-	} // debug
-
-	FreeAllTempMemory();
-
-	return xlret;
-}
 
 
 
