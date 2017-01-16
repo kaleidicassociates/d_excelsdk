@@ -9,6 +9,8 @@ import std.traits: isArray;
 version(unittest) {
     import unit_threaded;
 
+    uint gReferencedType;
+
     // automatically converts from oper to compare with a D type
     void shouldEqualDlang(U)(LPXLOPER12 actual, U expected, string file = __FILE__, size_t line = __LINE__) {
         if(actual.xltype == xltypeErr)
@@ -23,6 +25,8 @@ version(unittest) {
 
     XLOPER12 toSRef(T)(T val) {
         auto ret = toXlOper(val);
+        //hide real type somewhere to retrieve it
+        gReferencedType = ret.xltype;
         ret.xltype = xltypeSRef;
         return ret;
     }

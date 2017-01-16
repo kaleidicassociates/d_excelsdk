@@ -12,13 +12,7 @@
 */
 module xlld.xlcallcpp;
 
-// import windows.h
-//import std.c.windows.windows;
-import core.sys.windows.windows;
-import xlld.xlcall;
-import core.vararg;
-
-version(Windows):
+import xlld.xlcall: LPXLOPER12;
 
 /**
    Excel 12 entry points backwards compatible with Excel 11
@@ -28,25 +22,26 @@ version(Windows):
    used to callback into Excel 11 and earlier versions
 */
 
-enum cxloper12Max=255;
-enum EXCEL12ENTRYPT="MdCallBack12";
 
 // PASCAL
 alias EXCEL12PROC=extern(Windows) int function (int xlfn, int coper, LPXLOPER12 *rgpxloper12, LPXLOPER12 xloper12Res) nothrow @nogc;
 
-HMODULE hmodule;
-EXCEL12PROC pexcel12;
+EXCEL12PROC gExcel12;
 
 void FetchExcel12EntryPt() nothrow @nogc
 {
-	if (pexcel12 is null)
-	{
-		hmodule = GetModuleHandleW(null);
-		if (hmodule !is null)
+	version(Windows) {
+		import core.sys.windows.windows: GetModuleHandleW, GetProcAddress;
+		if (gExcel12 is null)
 		{
-			pexcel12 = cast(EXCEL12PROC) GetProcAddress(hmodule, EXCEL12ENTRYPT);
+			auto hmodule = GetModuleHandleW(null);
+			if (hmodule !is null)
+			{
+				enum EXCEL12ENTRYPT="MdCallBack12";
+				gExcel12 = cast(EXCEL12PROC) GetProcAddress(hmodule, EXCEL12ENTRYPT);
+			}
+			assert(gExcel12 !is null, "No entry point fetched");
 		}
-		assert(pexcel12 !is null, "No entry point fetched");
 	}
 }
 
@@ -63,26 +58,28 @@ void FetchExcel12EntryPt() nothrow @nogc
 */
 
 //pascal
-extern(Windows) void SetExcel12EntryPt(EXCEL12PROC pexcel12New)
+extern(Windows) void SetExcel12EntryPt(EXCEL12PROC gExcel12New)
 {
-	FetchExcel12EntryPt();
-	if (pexcel12 is null)
+	if (gExcel12 is null)
 	{
-		pexcel12 = pexcel12New;
+		gExcel12 = gExcel12New;
 	}
 }
 
 //_cdecl
 int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 {
+	import core.vararg: va_list;
+	import xlld.xlcall: xlretFailed, xlretInvCount;
 
+	enum cxloper12Max=255;
 	LPXLOPER12[cxloper12Max] rgxloper12;
 	va_list ap;
 	int ioper;
 	int mdRet;
 
 	FetchExcel12EntryPt();
-	if (pexcel12 is null)
+	if (gExcel12 is null)
 	{
 		mdRet = xlretFailed;
 	}
@@ -93,8 +90,8 @@ int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 		{
 			foreach(i,arg;args)
 				rgxloper12[ioper] = arg;
-//			original line was mdRet = (pexcel12)(xlfn, count, &rgxloper12[0], operRes);
-			mdRet = (*pexcel12)(xlfn, cast(int)args.length, rgxloper12.ptr, operRes);
+//			original line was mdRet = (gExcel12)(xlfn, count, &rgxloper12[0], operRes);
+			mdRet = (*gExcel12)(xlfn, cast(int)args.length, rgxloper12.ptr, operRes);
 		}
 	}
 	return(mdRet);
@@ -103,16 +100,18 @@ int Excel12(int xlfn, LPXLOPER12 operRes, LPXLOPER12[] args ...)
 
 extern(Windows) int Excel12v(int xlfn, LPXLOPER12 operRes, int count, LPXLOPER12* opers) nothrow @nogc
 {
+	import xlld.xlcall: xlretFailed;
+
 	int mdRet;
 	FetchExcel12EntryPt();
-	if (pexcel12 is null)
+	if (gExcel12 is null)
 	{
 		mdRet = xlretFailed;
 	}
 	else
 	{
-		// original line was mdRet = (pexcel12)(xlfn, count, &rgxloper12[0], operRes);
-		mdRet = (*pexcel12)(xlfn, count, opers, operRes);
+		// original line was mdRet = (gExcel12)(xlfn, count, &rgxloper12[0], operRes);
+		mdRet = (*gExcel12)(xlfn, count, opers, operRes);
 	}
 	return(mdRet);
 
