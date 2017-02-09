@@ -473,7 +473,8 @@ auto fromXlOper(T, A)(LPXLOPER12 val, ref A allocator) if(is(T == string)) {
     import std.experimental.allocator: makeArray;
     import std.utf;
 
-    if(val.xltype == xltypeMissing)
+    const stripType = val.xltype & ~(xlbitXLFree | xlbitDLLFree);
+    if(stripType != xltypeStr)
         return null;
 
     auto ret = allocator.makeArray!char(val.val.str[0]);
